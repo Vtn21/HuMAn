@@ -41,7 +41,7 @@ What things you need to install the software and how to install them.
 This algorithm is programmed using [Python](https://www.python.org/), currently using version 3.8. Installing Python through [Anaconda](https://www.anaconda.com/products/individual) 🐍 is recommended because:
 
 - You gain access to [Conda](https://anaconda.org/anaconda/repo) packages, apart from [Pip](https://pypi.org/) packages;
-- Conda is a great tool for managing virtual environments (which you can use to install all the prerequisites for HuMAn)!
+- Conda is a great tool for managing virtual environments (you can [create](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) one to install all the prerequisites for HuMAn)!
 
 Other key dependencies are (version numbers are kept for reference, but newer versions may work):
 
@@ -57,7 +57,6 @@ pip install tensorflow
 ```
 conda install cudatoolkit
 ```
-
 
 ### 💻 Installing
 
