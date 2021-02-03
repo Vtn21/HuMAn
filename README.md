@@ -58,6 +58,38 @@ pip install tensorflow
 conda install cudatoolkit
 ```
 
+### 🗂 Database and model
+
+HuMAn uses the [AMASS](https://amass.is.tue.mpg.de/) human motion database. Its data is publicly available, requiring only a simple account. The whole database (after uncompressed) has around 23 GB of [NumPy](https://numpy.org/) npz files. Keep it in a directory of your choice.
+
+AMASS data can be visualized using a series of body models, such as [SMPL](https://smpl.is.tue.mpg.de/), [SMPL-H](https://mano.is.tue.mpg.de/) (this comprises hand motions), [SMPL-X](https://smpl-x.is.tue.mpg.de/) (SMPL eXpressive, with facial expressions), or the more recent [STAR](https://star.is.tue.mpg.de/en). HuMAn uses the STAR model as it has fewer parameters than its predecessors, while exhibiting more realistic shape deformations. You can download the models from their webpages, creating an account as done for AMASS.
+
+Please note that the body models are used here just for visualization, and do not interfere in training. Thus, it is easy to incorporate the other models for this purpose.
+
+Update the folder paths in the scripts as required. The example folder structure is given as follows:
+
+    .
+    ├── ...
+    ├── AMASS
+    │   ├── datasets                          # Folder for all AMASS sub-datasets
+    |   |   ├── ACCAD                         # A sub-dataset from AMASS
+    |   |   |   ├── Female1General_c3d        # Sub-folders for each subject
+    |   |   |   |   ├── A1 - Stand_poses.npz  # Each recording is a npz file
+    |   |   |   |   └── ...
+    |   |   |   └── ...
+    |   |   ├── BMLhandball                   # Another sub-dataset (same structure)
+    |   |   |   ├── S01_Expert                # Subject sub-folder
+    |   |   |   └── ...
+    |   |   └── ...
+    |   └── models                            # Folder for STAR model (and maybe others)
+    |       └── star                          # The downloaded model
+    |           ├── female.npz
+    |           ├── male.npz
+    |           └── neutral.npz
+    ├── HuMAn                                 # This repository
+    |   └── ...
+    └── ...
+
 ### 💻 Installing
 
 This (still) is as simple as cloning this repository.
