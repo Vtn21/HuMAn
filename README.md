@@ -65,6 +65,13 @@ conda install cudatoolkit
 pip install git+https://github.com/Vtn21/STAR
 ```
 
+- [Trimesh](https://trimsh.org/) (version 3.9.1)
+  - Used for visualizing AMASS recordings as body meshes.
+
+```bash
+conda install -c conda-forge trimesh
+```
+
 ### 🗂 Database and model
 
 HuMAn uses the [AMASS](https://amass.is.tue.mpg.de/) human motion database. Its data is publicly available, requiring only a simple account. The whole database (after uncompressed) has around 23 GB of [NumPy](https://numpy.org/) npz files. Keep it in a directory of your choice.
