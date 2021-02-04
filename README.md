@@ -45,17 +45,24 @@ This algorithm is programmed using [Python](https://www.python.org/), currently 
 
 Other key dependencies are (version numbers are kept for reference, but newer versions may work):
 
-- [TensorFlow](https://www.tensorflow.org/) (2.4)
-```
+- [TensorFlow](https://www.tensorflow.org/) (version 2.4)
+```bash
 pip install tensorflow
 ```
 
-- [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-zone) (11.0)
+- [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-zone) (version 11.0)
   - This is not mandatory, but highly recommended! An available NVIDIA GPU can speed up TensorFlow code to a great extent, when compared to running solely on CPU;
   - You can install it with Conda, enabling different versions of the toolkit to be installed in other virtual environments;
   - Ensure to pair TensorFlow and CUDA versions correctly (see [this](https://www.tensorflow.org/install/gpu#software_requirements)).
-```
+```bash
 conda install cudatoolkit
+```
+
+- [STAR model](https://github.com/Vtn21/STAR) (more about it below)
+  - The authors of the STAR body model provide loaders based upon Chumpy, PyTorch and TensorFlow. I created a fork of their repository, to make pointing to the model (.npz files) directory easier and more flexible. You can install it using pip:
+
+```bash
+pip install git+https://github.com/Vtn21/STAR
 ```
 
 ### 🗂 Database and model
@@ -94,7 +101,7 @@ Update the folder paths in the scripts as required. The example folder structure
 
 This (still) is as simple as cloning this repository.
 
-```
+```bash
 git clone https://github.com/Vtn21/HuMAn
 ```
 
