@@ -1,4 +1,4 @@
-'''
+"""
 view_amass.py
 
 This script provides an animated visualization for any AMASS recording.
@@ -10,7 +10,7 @@ The pyglet renderer from trimesh seems to be a software renderer, thus
     it works at low framerates. It is still enough for basic visualization.
 
 Author: Victor T. N.
-'''
+"""
 
 import numpy as np
 import trimesh
