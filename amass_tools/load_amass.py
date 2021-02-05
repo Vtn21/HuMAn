@@ -14,6 +14,7 @@ Author: Victor T. N.
 import glob
 import numpy as np
 import os
+from tqdm import tqdm
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf
 
@@ -33,17 +34,17 @@ def _bytes_feature(value):
     if isinstance(value, type(tf.constant(0))):
         # BytesList won't unpack a string from an EagerTensor.
         value = value.numpy()
-    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
 
 
 def _float_feature(value):
     # Returns a float_list from a float / double.
-    return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
+    return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
 
 def _int64_feature(value):
     # Returns an int64_list from a bool / enum / int / uint.
-    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
 
 """
@@ -81,13 +82,14 @@ def amass_example(bdata, framerate_drop=1, max_betas=10):
     feature = {
         # Keep only joint poses, discarding body orientation
         # framerate_drop acts here, picking just part of the array
-        "poses": _float_feature(bdata["poses"][0::framerate_drop, 3:72]),
+        "poses": _float_feature(
+            bdata["poses"][0::framerate_drop, 3:72].flatten()),
         # Time interval between recordings, considering framerate drop
-        "dt": _float_feature(framerate_drop/bdata["mocap_framerate"]),
+        "dt": _float_feature([framerate_drop/bdata["mocap_framerate"]]),
         # Shape components (betas), up to the maximum defined amount
         "betas": _float_feature(bdata["betas"][:num_betas]),
         # Gender encoded into integer
-        "gender": _int64_feature(gender_int)
+        "gender": _int64_feature([gender_int])
     }
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
@@ -108,15 +110,33 @@ if __name__ == "__main__":
     # Path to save the TFRecords files
     tfr_path = "../../AMASS/tfrecords"
     for split in amass_splits.keys():
+        # Filename for the current split
+        tfr_filename = split + ".tfrecord"
         # Full path to the TFRecords file (same name as the respective split)
-        tfr_file = os.path.join(tfr_path, "".join((split, ".tfrecord")))
-        for sub_ds in amass_splits[split]:
-            npz_glob = os.path.join(amass_path, sub_ds, "*/*.npz")
-            for npz_file in glob.iglob(npz_glob):
-                bdata = np.load(npz_file)
-                if "poses" not in list(bdata.keys()):
-                    continue
-                else:
-                    print("Recording: %s" % npz_file)
-                    print('Data keys available:%s' % list(bdata.keys()))
-                break
+        tfr_file_path = os.path.join(tfr_path, tfr_filename)
+        # Display information about the current split
+        print("Creating TFRecord file for " + split + " split")
+        with tf.io.TFRecordWriter(tfr_file_path) as writer:
+            # Iterate through the sub-datasets of this split
+            for sub_ds in amass_splits[split]:
+                # Display information about the current sub dataset
+                print("Reading files in " + sub_ds + " dataset...")
+                # Create path with wildcards
+                npz_glob = os.path.join(amass_path, sub_ds, "*/*.npz")
+                # Create a list with all .npz file names
+                npz_file_list = glob.glob(npz_glob)
+                # Iterate through the .npz files of this sub-dataset
+                for i in tqdm(range(len(npz_file_list))):
+                    # Try to load specified file
+                    try:
+                        bdata = np.load(npz_file_list[i])
+                    except Exception as ex:
+                        print(ex)
+                        print("Error loading " + npz_file_list[i] +
+                              ". Skipping...")
+                    else:
+                        if "poses" not in list(bdata.keys()):
+                            continue
+                        else:
+                            tf_example = amass_example(bdata)
+                            writer.write(tf_example.SerializeToString())
