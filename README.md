@@ -41,29 +41,74 @@ What things you need to install the software and how to install them.
 This algorithm is programmed using [Python](https://www.python.org/), currently using version 3.8. Installing Python through [Anaconda](https://www.anaconda.com/products/individual) 🐍 is recommended because:
 
 - You gain access to [Conda](https://anaconda.org/anaconda/repo) packages, apart from [Pip](https://pypi.org/) packages;
-- Conda is a great tool for managing virtual environments (which you can use to install all the prerequisites for HuMAn)!
+- Conda is a great tool for managing virtual environments (you can [create](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) one to install all the prerequisites for HuMAn)!
 
 Other key dependencies are (version numbers are kept for reference, but newer versions may work):
 
-- [TensorFlow](https://www.tensorflow.org/) (2.4)
-```
+- [TensorFlow](https://www.tensorflow.org/) (version 2.4)
+```bash
 pip install tensorflow
 ```
 
-- [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-zone) (11.0)
+- [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-zone) (version 11.0)
   - This is not mandatory, but highly recommended! An available NVIDIA GPU can speed up TensorFlow code to a great extent, when compared to running solely on CPU;
   - You can install it with Conda, enabling different versions of the toolkit to be installed in other virtual environments;
   - Ensure to pair TensorFlow and CUDA versions correctly (see [this](https://www.tensorflow.org/install/gpu#software_requirements)).
-```
+```bash
 conda install cudatoolkit
 ```
 
+- [STAR model](https://github.com/Vtn21/STAR) (more about it below)
+  - The authors of the STAR body model provide loaders based upon Chumpy, PyTorch and TensorFlow. I created a fork of their repository, to make pointing to the model (.npz files) directory easier and more flexible. You can install it using pip:
+
+```bash
+pip install git+https://github.com/Vtn21/STAR
+```
+
+- [Trimesh](https://trimsh.org/) (version 3.9.1)
+  - Used for visualizing AMASS recordings as body meshes.
+
+```bash
+conda install -c conda-forge trimesh
+```
+
+### 🗂 Database and model
+
+HuMAn uses the [AMASS](https://amass.is.tue.mpg.de/) human motion database. Its data is publicly available, requiring only a simple account. The whole database (after uncompressed) has around 23 GB of [NumPy](https://numpy.org/) npz files. Keep it in a directory of your choice.
+
+AMASS data can be visualized using a series of body models, such as [SMPL](https://smpl.is.tue.mpg.de/), [SMPL-H](https://mano.is.tue.mpg.de/) (this comprises hand motions), [SMPL-X](https://smpl-x.is.tue.mpg.de/) (SMPL eXpressive, with facial expressions), or the more recent [STAR](https://star.is.tue.mpg.de/en). HuMAn uses the STAR model as it has fewer parameters than its predecessors, while exhibiting more realistic shape deformations. You can download the models from their webpages, creating an account as done for AMASS.
+
+Please note that the body models are used here just for visualization, and do not interfere in training. Thus, it is easy to incorporate the other models for this purpose.
+
+Update the folder paths in the scripts as required. The example folder structure is given as follows:
+
+    .
+    ├── ...
+    ├── AMASS
+    │   ├── datasets                          # Folder for all AMASS sub-datasets
+    |   |   ├── ACCAD                         # A sub-dataset from AMASS
+    |   |   |   ├── Female1General_c3d        # Sub-folders for each subject
+    |   |   |   |   ├── A1 - Stand_poses.npz  # Each recording is a npz file
+    |   |   |   |   └── ...
+    |   |   |   └── ...
+    |   |   ├── BMLhandball                   # Another sub-dataset (same structure)
+    |   |   |   ├── S01_Expert                # Subject sub-folder
+    |   |   |   └── ...
+    |   |   └── ...
+    |   └── models                            # Folder for STAR model (and maybe others)
+    |       └── star                          # The downloaded model
+    |           ├── female.npz
+    |           ├── male.npz
+    |           └── neutral.npz
+    ├── HuMAn                                 # This repository
+    |   └── ...
+    └── ...
 
 ### 💻 Installing
 
 This (still) is as simple as cloning this repository.
 
-```
+```bash
 git clone https://github.com/Vtn21/HuMAn
 ```
 
