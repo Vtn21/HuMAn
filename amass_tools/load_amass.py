@@ -111,27 +111,58 @@ def amass_example(bdata, framerate_drop=1, max_betas=10):
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-def write_tfrecord(tfr_file_path, amass_path, sub_ds):
-    # Create path with wildcards
-    npz_glob = os.path.join(amass_path, sub_ds, "*/*.npz")
-    # Create a list with all .npz file names
-    npz_file_list = glob.glob(npz_glob)
-    with tf.io.TFRecordWriter(tfr_file_path) as writer:
-        # Iterate through the .npz files of this sub-dataset
-        for i in trange(len(npz_file_list), desc=sub_ds):
-            # Try to load specified file
-            try:
-                bdata = np.load(npz_file_list[i])
-            except Exception as ex:
-                print(ex)
-                print("Error loading " + npz_file_list[i] +
-                      ". Skipping...")
-            else:
-                if "poses" not in list(bdata.keys()):
-                    continue
+# def write_tfrecord(tfr_file_path, amass_path, sub_ds):
+#     # Create path with wildcards
+#     npz_glob = os.path.join(amass_path, sub_ds, "*/*.npz")
+#     # Create a list with all .npz file names
+#     npz_file_list = glob.glob(npz_glob)
+#     with tf.io.TFRecordWriter(tfr_file_path) as writer:
+#         # Iterate through the .npz files of this sub-dataset
+#         for i in trange(len(npz_file_list), desc=sub_ds):
+#             # Try to load specified file
+#             try:
+#                 bdata = np.load(npz_file_list[i])
+#             except Exception as ex:
+#                 print(ex)
+#                 print("Error loading " + npz_file_list[i] +
+#                       ". Skipping...")
+#             else:
+#                 if "poses" not in list(bdata.keys()):
+#                     continue
+#                 else:
+#                     tf_example = amass_example(bdata)
+#                     writer.write(tf_example.SerializeToString())
+
+
+def write_tfrecord(amass_path, split, sub_datasets, tfr_path):
+    # Filename for the current split
+    tfr_file_name = split + ".tfrecord"
+    # Full path to the TFRecords file
+    tfr_file_path = os.path.join(tfr_path, tfr_file_name)
+    # Iterate over the sub_datasets of this split
+    for sub_ds in sub_datasets:
+        # Create a description string
+        description = sub_ds + " (" + split + ")"
+        # Create path with wildcards
+        npz_glob = os.path.join(amass_path, sub_ds, "*/*.npz")
+        # Create a list with all .npz file paths
+        npz_list = glob.glob(npz_glob)
+        with tf.io.TFRecordWriter(tfr_file_path) as writer:
+            # Iterate through the .npz files of this sub-dataset
+            for i in trange(len(npz_list), desc=description):
+                # Try to load specified file
+                try:
+                    bdata = np.load(npz_list[i])
+                except Exception as ex:
+                    print(ex)
+                    print("Error loading " + npz_list[i] +
+                          ". Skipping...")
                 else:
-                    tf_example = amass_example(bdata)
-                    writer.write(tf_example.SerializeToString())
+                    if "poses" not in list(bdata.keys()):
+                        continue
+                    else:
+                        tf_example = amass_example(bdata)
+                        writer.write(tf_example.SerializeToString())
 
 
 if __name__ == "__main__":
@@ -150,17 +181,21 @@ if __name__ == "__main__":
     # Path to save the TFRecords files
     tfr_path = "../../AMASS/tfrecords"
     # Create an executor
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    with concurrent.futures.ProcessPoolExecutor() as executor:
         # Iterate over the splits
-        for split in amass_splits.keys():
-            # Filename for the current split
-            tfr_filename = split + ".tfrecord"
-            # Full path to the TFRecords file
-            tfr_file_path = os.path.join(tfr_path, tfr_filename)
-            # Display information about the current split
-            print("Creating TFRecord file for " + split + " split")
-            # Iterate over the sub-datasets of this split
-            for sub_ds in amass_splits[split]:
-                # Start the executor
-                executor.submit(write_tfrecord,
-                                tfr_file_path, amass_path, sub_ds)
+        for split, sub_datasets in amass_splits.items():
+            executor.submit(write_tfrecord, amass_path, split,
+                            sub_datasets, tfr_path)
+
+
+            # # Filename for the current split
+            # tfr_filename = split + ".tfrecord"
+            # # Full path to the TFRecords file
+            # tfr_file_path = os.path.join(tfr_path, tfr_filename)
+            # # Display information about the current split
+            # print("Creating TFRecord file for " + split + " split")
+            # # Iterate over the sub-datasets of this split
+            # for sub_ds in amass_splits[split]:
+            #     # Start the executor
+            #     executor.submit(write_tfrecord,
+            #                     tfr_file_path, amass_path, sub_ds)
