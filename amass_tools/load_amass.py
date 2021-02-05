@@ -10,7 +10,6 @@ Also, TFRecords are preferred over the tf.data.Dataset, as AMASS is large
 Author: Victor T. N.
 """
 
-
 import concurrent.futures
 import glob
 import numpy as np
@@ -18,16 +17,6 @@ import os
 from tqdm import trange
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf
-
-
-"""
-TFRecord conversion functions
-
-The following three functions convert standard TensorFlow types into TFRecord
-types: BytesList, FloatList and Int64List.
-
-https://www.tensorflow.org/tutorials/load_data/tfrecord
-"""
 
 
 def _bytes_feature(value):
@@ -111,58 +100,45 @@ def amass_example(bdata, framerate_drop=1, max_betas=10):
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-# def write_tfrecord(tfr_file_path, amass_path, sub_ds):
-#     # Create path with wildcards
-#     npz_glob = os.path.join(amass_path, sub_ds, "*/*.npz")
-#     # Create a list with all .npz file names
-#     npz_file_list = glob.glob(npz_glob)
-#     with tf.io.TFRecordWriter(tfr_file_path) as writer:
-#         # Iterate through the .npz files of this sub-dataset
-#         for i in trange(len(npz_file_list), desc=sub_ds):
-#             # Try to load specified file
-#             try:
-#                 bdata = np.load(npz_file_list[i])
-#             except Exception as ex:
-#                 print(ex)
-#                 print("Error loading " + npz_file_list[i] +
-#                       ". Skipping...")
-#             else:
-#                 if "poses" not in list(bdata.keys()):
-#                     continue
-#                 else:
-#                     tf_example = amass_example(bdata)
-#                     writer.write(tf_example.SerializeToString())
+def write_tfrecord(amass_path, tfr_path, split, sub_dataset, position):
+    """Parses a full sub-dataset from AMASS and writes to a TFRecord file.
+    Used to spawn multiple processes, enabling high speed.
 
-
-def write_tfrecord(amass_path, split, sub_datasets, tfr_path):
-    # Filename for the current split
-    tfr_file_name = split + ".tfrecord"
-    # Full path to the TFRecords file
-    tfr_file_path = os.path.join(tfr_path, tfr_file_name)
-    # Iterate over the sub_datasets of this split
-    for sub_ds in sub_datasets:
-        # Create a description string
-        description = sub_ds + " (" + split + ")"
-        # Create path with wildcards
-        npz_glob = os.path.join(amass_path, sub_ds, "*/*.npz")
-        # Create a list with all .npz file paths
-        npz_list = glob.glob(npz_glob)
-        with tf.io.TFRecordWriter(tfr_file_path) as writer:
-            # Iterate through the .npz files of this sub-dataset
-            for i in trange(len(npz_list), desc=description):
-                # Try to load specified file
-                try:
-                    bdata = np.load(npz_list[i])
-                except Exception as ex:
-                    print(ex)
-                    print("Error loading " + npz_list[i] +
-                          ". Skipping...")
+    Args:
+        amass_path (string): path to the directory that contains all the
+                             AMASS sub-datasets.
+        tfr_path (string): path to the directory to store the TFRecords.
+        split (string): name of the dataset split (train, valid or test).
+        sub_dataset (string): name of the current sub-dataset.
+        position (int): where to locate the tqdm progress bar.
+    """
+    # Create a description string
+    description = sub_dataset + " (" + split + ")"
+    # Path to input files (.npz), with wildcards
+    input_path = os.path.join(amass_path, sub_dataset, "*/*.npz")
+    # Expand the input paths with glob
+    input_list = glob.glob(input_path)
+    # Path to output file (.tfrecord)
+    output_path = os.path.join(tfr_path, split + ".tfrecord")
+    with tf.io.TFRecordWriter(output_path) as writer:
+        # Iterate over all input files of this sub-dataset
+        for i in trange(len(input_list), desc=description, position=position):
+            # Try to load specified file
+            try:
+                bdata = np.load(input_list[i])
+            except Exception as ex:
+                print(ex)
+                print("Error loading " + input_list[i] + ". Skipping...")
+            else:
+                if "poses" not in list(bdata.keys()):
+                    print("here")
+                    # Skip a non-valid file
+                    continue
                 else:
-                    if "poses" not in list(bdata.keys()):
-                        continue
-                    else:
-                        tf_example = amass_example(bdata)
-                        writer.write(tf_example.SerializeToString())
+                    # Create the Example
+                    tf_example = amass_example(bdata)
+                    # Write to TFRecord file
+                    writer.write(tf_example.SerializeToString())
 
 
 if __name__ == "__main__":
@@ -183,19 +159,9 @@ if __name__ == "__main__":
     # Create an executor
     with concurrent.futures.ProcessPoolExecutor() as executor:
         # Iterate over the splits
+        position = 0
         for split, sub_datasets in amass_splits.items():
-            executor.submit(write_tfrecord, amass_path, split,
-                            sub_datasets, tfr_path)
-
-
-            # # Filename for the current split
-            # tfr_filename = split + ".tfrecord"
-            # # Full path to the TFRecords file
-            # tfr_file_path = os.path.join(tfr_path, tfr_filename)
-            # # Display information about the current split
-            # print("Creating TFRecord file for " + split + " split")
-            # # Iterate over the sub-datasets of this split
-            # for sub_ds in amass_splits[split]:
-            #     # Start the executor
-            #     executor.submit(write_tfrecord,
-            #                     tfr_file_path, amass_path, sub_ds)
+            for sub_dataset in sub_datasets:
+                executor.submit(write_tfrecord, amass_path, tfr_path,
+                                split, sub_dataset, position)
+                position += 1
