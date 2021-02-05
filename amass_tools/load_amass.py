@@ -11,11 +11,11 @@ Author: Victor T. N.
 """
 
 
+import concurrent.futures
 import glob
 import numpy as np
 import os
-import threading
-from tqdm import tqdm
+from tqdm import trange
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf
 
@@ -111,12 +111,14 @@ def amass_example(bdata, framerate_drop=1, max_betas=10):
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-def write_tfrecord(tfr_file_path, npz_glob):
+def write_tfrecord(tfr_file_path, amass_path, sub_ds):
+    # Create path with wildcards
+    npz_glob = os.path.join(amass_path, sub_ds, "*/*.npz")
     # Create a list with all .npz file names
     npz_file_list = glob.glob(npz_glob)
     with tf.io.TFRecordWriter(tfr_file_path) as writer:
-    # Iterate through the .npz files of this sub-dataset
-        for i in tqdm(range(len(npz_file_list))):
+        # Iterate through the .npz files of this sub-dataset
+        for i in trange(len(npz_file_list), desc=sub_ds):
             # Try to load specified file
             try:
                 bdata = np.load(npz_file_list[i])
@@ -147,28 +149,18 @@ if __name__ == "__main__":
     }
     # Path to save the TFRecords files
     tfr_path = "../../AMASS/tfrecords"
-    # List to store all threads
-    threads = []
-    for split in amass_splits.keys():
-        # Filename for the current split
-        tfr_filename = split + ".tfrecord"
-        # Full path to the TFRecords file (same name as the respective split)
-        tfr_file_path = os.path.join(tfr_path, tfr_filename)
-        # Display information about the current split
-        print("Creating TFRecord file for " + split + " split")
-        with tf.io.TFRecordWriter(tfr_file_path) as writer:
-            # Iterate through the sub-datasets of this split
+    # Create an executor
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Iterate over the splits
+        for split in amass_splits.keys():
+            # Filename for the current split
+            tfr_filename = split + ".tfrecord"
+            # Full path to the TFRecords file
+            tfr_file_path = os.path.join(tfr_path, tfr_filename)
+            # Display information about the current split
+            print("Creating TFRecord file for " + split + " split")
+            # Iterate over the sub-datasets of this split
             for sub_ds in amass_splits[split]:
-                # Display information about the current sub-dataset
-                print("Reading files in " + sub_ds + " dataset...")
-                # Create path with wildcards
-                npz_glob = os.path.join(amass_path, sub_ds, "*/*.npz")
-                # Spawn a thread to load this sub-dataset
-                t = threading.Thread(target=write_tfrecord,
-                                     args=(tfr_file_path, npz_glob))
-                t.start()
-                # Append the current thread to the list
-                threads.append(t)
-    # Join all threads
-    for thread in threads:
-        thread.join()
+                # Start the executor
+                executor.submit(write_tfrecord,
+                                tfr_file_path, amass_path, sub_ds)
