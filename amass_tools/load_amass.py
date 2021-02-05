@@ -14,6 +14,7 @@ Author: Victor T. N.
 import glob
 import numpy as np
 import os
+import threading
 from tqdm import tqdm
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf
@@ -30,6 +31,14 @@ https://www.tensorflow.org/tutorials/load_data/tfrecord
 
 
 def _bytes_feature(value):
+    """BytesList convertor for TFRecord.
+
+    Args:
+        value (string / byte): input value to be encoded.
+
+    Returns:
+        tf.train.Feature: input value encoded to BytesList
+    """
     # Returns a bytes_list from a string / byte.
     if isinstance(value, type(tf.constant(0))):
         # BytesList won't unpack a string from an EagerTensor.
@@ -38,21 +47,29 @@ def _bytes_feature(value):
 
 
 def _float_feature(value):
+    """FloatList convertor for TFRecord.
+
+    Args:
+        value (float32 / float64): input value to be encoded.
+
+    Returns:
+        tf.train.Feature: input value encoded to FloatList
+    """
     # Returns a float_list from a float / double.
     return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
 
 def _int64_feature(value):
+    """Int64List convertor for TFRecord.
+
+    Args:
+        value (bool / enum / (u)int32 / (u)int64): input value to be encoded.
+
+    Returns:
+        tf.train.Feature: input value encoded to Int64List
+    """
     # Returns an int64_list from a bool / enum / int / uint.
     return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
-
-
-"""
-Encoding functions
-
-Transform input data from AMASS recordings (numpy) into TF Examples, that are
-able to be packed inside a TFRecord.
-"""
 
 
 def amass_example(bdata, framerate_drop=1, max_betas=10):
@@ -94,6 +111,27 @@ def amass_example(bdata, framerate_drop=1, max_betas=10):
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
+def write_tfrecord(tfr_file_path, npz_glob):
+    # Create a list with all .npz file names
+    npz_file_list = glob.glob(npz_glob)
+    with tf.io.TFRecordWriter(tfr_file_path) as writer:
+    # Iterate through the .npz files of this sub-dataset
+        for i in tqdm(range(len(npz_file_list))):
+            # Try to load specified file
+            try:
+                bdata = np.load(npz_file_list[i])
+            except Exception as ex:
+                print(ex)
+                print("Error loading " + npz_file_list[i] +
+                      ". Skipping...")
+            else:
+                if "poses" not in list(bdata.keys()):
+                    continue
+                else:
+                    tf_example = amass_example(bdata)
+                    writer.write(tf_example.SerializeToString())
+
+
 if __name__ == "__main__":
     # Path to the datasets
     amass_path = "../../AMASS/datasets"
@@ -109,6 +147,8 @@ if __name__ == "__main__":
     }
     # Path to save the TFRecords files
     tfr_path = "../../AMASS/tfrecords"
+    # List to store all threads
+    threads = []
     for split in amass_splits.keys():
         # Filename for the current split
         tfr_filename = split + ".tfrecord"
@@ -119,24 +159,16 @@ if __name__ == "__main__":
         with tf.io.TFRecordWriter(tfr_file_path) as writer:
             # Iterate through the sub-datasets of this split
             for sub_ds in amass_splits[split]:
-                # Display information about the current sub dataset
+                # Display information about the current sub-dataset
                 print("Reading files in " + sub_ds + " dataset...")
                 # Create path with wildcards
                 npz_glob = os.path.join(amass_path, sub_ds, "*/*.npz")
-                # Create a list with all .npz file names
-                npz_file_list = glob.glob(npz_glob)
-                # Iterate through the .npz files of this sub-dataset
-                for i in tqdm(range(len(npz_file_list))):
-                    # Try to load specified file
-                    try:
-                        bdata = np.load(npz_file_list[i])
-                    except Exception as ex:
-                        print(ex)
-                        print("Error loading " + npz_file_list[i] +
-                              ". Skipping...")
-                    else:
-                        if "poses" not in list(bdata.keys()):
-                            continue
-                        else:
-                            tf_example = amass_example(bdata)
-                            writer.write(tf_example.SerializeToString())
+                # Spawn a thread to load this sub-dataset
+                t = threading.Thread(target=write_tfrecord,
+                                     args=(tfr_file_path, npz_glob))
+                t.start()
+                # Append the current thread to the list
+                threads.append(t)
+    # Join all threads
+    for thread in threads:
+        thread.join()
