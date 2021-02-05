@@ -14,6 +14,7 @@ import concurrent.futures
 import glob
 import numpy as np
 import os
+import time
 from tqdm import trange
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf
@@ -122,16 +123,15 @@ def write_tfrecord(amass_path, tfr_path, split, sub_dataset, position):
     output_path = os.path.join(tfr_path, split + ".tfrecord")
     with tf.io.TFRecordWriter(output_path) as writer:
         # Iterate over all input files of this sub-dataset
-        for i in trange(len(input_list), desc=description, position=position):
+        for i in trange(len(input_list), desc=description, position=position,
+                        dynamic_ncols=True, mininterval=1.0):
             # Try to load specified file
             try:
                 bdata = np.load(input_list[i])
             except Exception as ex:
-                print(ex)
-                print("Error loading " + input_list[i] + ". Skipping...")
+                print(ex + "\nError loading " + input_list[i])
             else:
                 if "poses" not in list(bdata.keys()):
-                    print("here")
                     # Skip a non-valid file
                     continue
                 else:
@@ -164,4 +164,5 @@ if __name__ == "__main__":
             for sub_dataset in sub_datasets:
                 executor.submit(write_tfrecord, amass_path, tfr_path,
                                 split, sub_dataset, position)
+                time.sleep(0.2)
                 position += 1
