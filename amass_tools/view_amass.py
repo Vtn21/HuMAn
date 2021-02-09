@@ -64,17 +64,15 @@ def update_scene(scene):
 
 
 if __name__ == "__main__":
+    # Home for all AMASS datasets
+    amass_home = "../../AMASS/datasets"
+    # Subpath for the npz_file
+    npz_path = "Eyes_Japan_Dataset/hamada/accident-01-dodge-hamada_poses.npz"
+    # Joint paths
+    full_path = os.path.join(amass_home, npz_path)
 
-    # Path to the AMASS motion npz file
-    # npz_bdata_path = "../../AMASS/datasets/KIT/3/912_3_01_poses.npz"
-    npz_bdata_path = "../../AMASS/datasets/KIT/314/run04_poses.npz"
-    # npz_bdata_path = "../../AMASS/datasets/KIT/314/parkour02_poses.npz"
-    # npz_bdata_path = "../../AMASS/datasets/Eyes_Japan_Dataset/hamada/accident-01-dodge-hamada_poses.npz"
-    # npz_bdata_path = "../../AMASS/datasets/BMLhandball/S03_Expert/Trial_upper_left_140_poses.npz"
-    # npz_bdata_path = "../../AMASS/datasets/TCD_handMocap/ExperimentDatabase/OK_A_poses.npz"
-
-    # Load the compressed numpy file
-    bdata = np.load(npz_bdata_path)
+    # Load the compressed NumPy file
+    bdata = np.load(full_path)
 
     # Print info
     print('Data keys available:%s' % list(bdata.keys()))
