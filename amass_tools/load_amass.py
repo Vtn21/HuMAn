@@ -84,16 +84,23 @@ def amass_example(bdata, framerate_drop=1, max_betas=10):
         gender_int = 0
     # Ensure that the number of betas is not greater than what is available
     num_betas = min(max_betas, bdata["betas"].shape[0])
+    # Keep only joint poses, discarding body orientation
+    # framerate_drop acts here, picking just part of the array
+    poses = bdata["poses"][0::framerate_drop, 3:72]
+    # Store the length (used for parsing)
+    num_poses = poses.shape[0]
     # Build feature dict
     feature = {
-        # Keep only joint poses, discarding body orientation
-        # framerate_drop acts here, picking just part of the array
-        "poses": _float_feature(
-            bdata["poses"][0::framerate_drop, 3:72].flatten()),
-        # Time interval between recordings, considering framerate drop
-        "dt": _float_feature([framerate_drop/bdata["mocap_framerate"]]),
+        # Flattened poses array
+        "poses": _float_feature(poses.flatten()),
+        # Number of pose frames
+        "num_poses": _int64_feature([num_poses]),
         # Shape components (betas), up to the maximum defined amount
         "betas": _float_feature(bdata["betas"][:num_betas]),
+        # Store the number of betas
+        "num_betas": _int64_feature([num_betas]),
+        # Time interval between recordings, considering framerate drop
+        "dt": _float_feature([framerate_drop/bdata["mocap_framerate"]]),
         # Gender encoded into integer
         "gender": _int64_feature([gender_int])
     }
