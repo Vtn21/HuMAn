@@ -14,33 +14,28 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf
 
 
-def parse_nums(record):
-    feature_names = {
+def parse_record(record):
+    num_names = {
         "num_poses": tf.io.FixedLenFeature([], tf.int64),
         "num_betas": tf.io.FixedLenFeature([], tf.int64)
     }
-    return tf.io.parse_single_example(record, feature_names)
-
-
-def parse_record(record, num_poses, num_betas):
+    num = tf.io.parse_single_example(record, num_names)
     feature_names = {
-        "poses": tf.io.FixedLenFeature([num_poses*69], tf.float32),
+        "poses": tf.io.FixedLenFeature([num["num_poses"]*69], tf.float32),
         "dt": tf.io.FixedLenFeature([], tf.float32),
-        "betas": tf.io.FixedLenFeature([num_betas], tf.float32),
+        "betas": tf.io.FixedLenFeature([num["num_betas"]], tf.float32),
         "gender": tf.io.FixedLenFeature([], tf.int64)
     }
     return tf.io.parse_single_example(record, feature_names)
 
 
-def decode_record(record):
-    p_nums = parse_nums(record)
-    p_record = parse_record(record, p_nums["num_poses"], p_nums["num_betas"])
-    poses = tf.reshape(p_record["poses"], [-1, 69])
-    betas = p_record["betas"]
-    dt = p_record["dt"]
-    if p_record["gender"] == 1:
+def decode_record(parsed_record):
+    poses = tf.reshape(parsed_record["poses"], [-1, 69])
+    betas = parsed_record["betas"]
+    dt = parsed_record["dt"]
+    if parsed_record["gender"] == 1:
         gender = "female"
-    elif p_record["gender"] == -1:
+    elif parsed_record["gender"] == -1:
         gender = "male"
     else:
         gender = "neutral"
@@ -63,7 +58,7 @@ if __name__ == "__main__":
                                   reshuffle_each_iteration=True)
         for record in dataset:
             # Parse and decode
-            poses, betas, dt, gender = decode_record(record)
+            poses, betas, dt, gender = decode_record(parse_record(record))
             print(poses)
             print(dt)
             print(betas)
