@@ -1,20 +1,29 @@
 """
-load_amass.py
+load_tfrecord.py
 
-Load the AMASS TFRecords created with "load_amass.py".
+Load the AMASS TFRecords created with "amass_to_tfrecord.py".
 This script is important for testing if data loaded into the TFRecord
     file retains all necessary information for training.
 
 Author: Victor T. N.
 """
 
+import glob
 import os
 import time
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
-import tensorflow as tf
+import tensorflow as tf  # noqa: E402
 
 
 def parse_record(record):
+    """Parse a single record from the dataset.
+
+    Args:
+        record (raw dataset record): a single record from the dataset.
+
+    Returns:
+        (parsed record): a single parsed record from the dataset.
+    """
     num_names = {
         "num_poses": tf.io.FixedLenFeature([], tf.int64),
         "num_betas": tf.io.FixedLenFeature([], tf.int64)
@@ -30,6 +39,19 @@ def parse_record(record):
 
 
 def decode_record(parsed_record):
+    """Decode a previously parsed record.
+
+    Args:
+        parsed_record (raw dataset record): a single record from the dataset,
+                                            previously parsed by the
+                                            "parse_record" function.
+
+    Returns:
+        poses (tensor): N x 69 tensor with the sequence of poses.
+        betas (tensor): 1D tensor with all shape primitives.
+        dt (tensor): float tensor with the time step for this sequence.
+        gender (string): gender of the subject.
+    """
     poses = tf.reshape(parsed_record["poses"], [-1, 69])
     betas = parsed_record["betas"]
     dt = parsed_record["dt"]
@@ -44,24 +66,29 @@ def decode_record(parsed_record):
 
 if __name__ == "__main__":
     # Path where the TFRecords are located
-    tfr_path = "../../AMASS/tfrecords"
+    tfr_home = "../../AMASS/tfrecords"
     # Data splits (same as the filenames)
-    # splits = ["train", "valid", "test"]
-    splits = ["test"]
+    splits = ["train", "valid", "test"]
     for split in splits:
-        # Full path to a single file
-        tfr_file_path = os.path.join(tfr_path, split + ".tfrecord")
-        # Load the TFRecord as a Dataset
-        dataset = tf.data.TFRecordDataset(tfr_file_path)
+        # Display information
+        print(f"Loading \"{split}\" split\n")
+        # Full path to the datasets of a specific split, with wildcards
+        tfr_paths = os.path.join(tfr_home, split, "*.tfrecord")
+        # Expand with glob
+        tfr_list = glob.glob(tfr_paths)
+        # Load the TFRecords as a Dataset
+        dataset = tf.data.TFRecordDataset(tfr_list,
+                                          num_parallel_reads=os.cpu_count())
         # Shuffle the dataset
         dataset = dataset.shuffle(1000,
                                   reshuffle_each_iteration=True)
-        for record in dataset:
-            # Parse and decode
-            poses, betas, dt, gender = decode_record(parse_record(record))
-            print(poses)
-            print(dt)
-            print(betas)
-            print(gender)
-            print("\n\n")
-            time.sleep(1)
+        # Take a record as example
+        record = next(iter(dataset))
+        # Parse and decode
+        poses, betas, dt, gender = decode_record(parse_record(record))
+        # Show data
+        print(f"Poses: {poses}\n")
+        print(f"dt: {dt}\n")
+        print(f"betas: {betas}\n")
+        print(f"gender: {gender}\n\n")
+        time.sleep(1)
