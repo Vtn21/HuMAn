@@ -68,25 +68,27 @@ if __name__ == "__main__":
     # Path where the TFRecords are located
     tfr_home = "../../AMASS/tfrecords"
     # Data splits (same as the filenames)
-    # splits = ["train", "valid", "test"]
-    splits = ["test"]
+    splits = ["train", "valid", "test"]
     for split in splits:
+        # Display information
+        print(f"Loading \"{split}\" split\n")
         # Full path to the datasets of a specific split, with wildcards
         tfr_paths = os.path.join(tfr_home, split, "*.tfrecord")
         # Expand with glob
         tfr_list = glob.glob(tfr_paths)
         # Load the TFRecords as a Dataset
-        dataset = tf.data.TFRecordDataset(tfr_paths,
+        dataset = tf.data.TFRecordDataset(tfr_list,
                                           num_parallel_reads=os.cpu_count())
         # Shuffle the dataset
         dataset = dataset.shuffle(1000,
                                   reshuffle_each_iteration=True)
-        for record in dataset:
-            # Parse and decode
-            poses, betas, dt, gender = decode_record(parse_record(record))
-            print(poses)
-            print(dt)
-            print(betas)
-            print(gender)
-            print("\n\n")
-            time.sleep(1)
+        # Take a record as example
+        record = next(iter(dataset))
+        # Parse and decode
+        poses, betas, dt, gender = decode_record(parse_record(record))
+        # Show data
+        print(f"Poses: {poses}\n")
+        print(f"dt: {dt}\n")
+        print(f"betas: {betas}\n")
+        print(f"gender: {gender}\n\n")
+        time.sleep(1)
