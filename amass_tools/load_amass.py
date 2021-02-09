@@ -14,7 +14,6 @@ import concurrent.futures
 import glob
 import numpy as np
 import os
-import time
 from tqdm import trange
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf
@@ -85,60 +84,71 @@ def amass_example(bdata, framerate_drop=1, max_betas=10):
         gender_int = 0
     # Ensure that the number of betas is not greater than what is available
     num_betas = min(max_betas, bdata["betas"].shape[0])
+    # Keep only joint poses, discarding body orientation
+    # framerate_drop acts here, picking just part of the array
+    poses = bdata["poses"][0::framerate_drop, 3:72]
+    # Store the length (used for parsing)
+    num_poses = poses.shape[0]
     # Build feature dict
     feature = {
-        # Keep only joint poses, discarding body orientation
-        # framerate_drop acts here, picking just part of the array
-        "poses": _float_feature(
-            bdata["poses"][0::framerate_drop, 3:72].flatten()),
-        # Time interval between recordings, considering framerate drop
-        "dt": _float_feature([framerate_drop/bdata["mocap_framerate"]]),
+        # Flattened poses array
+        "poses": _float_feature(poses.flatten()),
+        # Number of pose frames
+        "num_poses": _int64_feature([num_poses]),
         # Shape components (betas), up to the maximum defined amount
         "betas": _float_feature(bdata["betas"][:num_betas]),
+        # Store the number of betas
+        "num_betas": _int64_feature([num_betas]),
+        # Time interval between recordings, considering framerate drop
+        "dt": _float_feature([framerate_drop/bdata["mocap_framerate"]]),
         # Gender encoded into integer
         "gender": _int64_feature([gender_int])
     }
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-def write_tfrecord(amass_path, tfr_path, split, sub_dataset, position):
-    """Parses a full sub-dataset from AMASS and writes to a TFRecord file.
-    Used to spawn multiple processes, enabling high speed.
+def write_tfrecord(amass_path, tfr_path, split, sub_datasets, position):
+    """Parses a full split from AMASS and writes to a TFRecord file.
+    Each output file is handled by a separate process.
 
     Args:
         amass_path (string): path to the directory that contains all the
                              AMASS sub-datasets.
         tfr_path (string): path to the directory to store the TFRecords.
         split (string): name of the dataset split (train, valid or test).
-        sub_dataset (string): name of the current sub-dataset.
+        sub_datasets (string): list with the names of the sub-datasets.
         position (int): where to locate the tqdm progress bar.
     """
-    # Create a description string
-    description = sub_dataset + " (" + split + ")"
-    # Path to input files (.npz), with wildcards
-    input_path = os.path.join(amass_path, sub_dataset, "*/*.npz")
-    # Expand the input paths with glob
-    input_list = glob.glob(input_path)
     # Path to output file (.tfrecord)
     output_path = os.path.join(tfr_path, split + ".tfrecord")
     with tf.io.TFRecordWriter(output_path) as writer:
-        # Iterate over all input files of this sub-dataset
-        for i in trange(len(input_list), desc=description, position=position,
-                        dynamic_ncols=True, mininterval=1.0):
-            # Try to load specified file
-            try:
-                bdata = np.load(input_list[i])
-            except Exception as ex:
-                print(ex + "\nError loading " + input_list[i])
-            else:
-                if "poses" not in list(bdata.keys()):
-                    # Skip a non-valid file
-                    continue
+        # Iterate over all sub-datasets
+        for sub_dataset in sub_datasets:
+            # Create a description string
+            description = sub_dataset + " (" + split + ")"
+            # Path to input files (.npz), with wildcards
+            input_path = os.path.join(amass_path, sub_dataset, "*/*.npz")
+            # Expand the input paths with glob
+            input_list = glob.glob(input_path)
+            # Iterate over all input files of this sub-dataset
+            for i in trange(len(input_list), desc=description,
+                            position=position, dynamic_ncols=True,
+                            mininterval=1.0, leave=False):
+                # Try to load specified file
+                try:
+                    bdata = np.load(input_list[i])
+                except Exception as ex:
+                    print(ex + "\nError loading " + input_list[i])
                 else:
-                    # Create the Example
-                    tf_example = amass_example(bdata)
-                    # Write to TFRecord file
-                    writer.write(tf_example.SerializeToString())
+                    if "poses" not in list(bdata.keys()):
+                        # Skip a non-valid file
+                        continue
+                    else:
+                        for fr_drop in [1, 2, 4, 10]:
+                            # Create the Example
+                            tf_example = amass_example(bdata, fr_drop)
+                            # Write to TFRecord file
+                            writer.write(tf_example.SerializeToString())
 
 
 if __name__ == "__main__":
@@ -148,8 +158,8 @@ if __name__ == "__main__":
     # This names must match the subfolders of "amass_path"
     # Inexistent directories will be skipped
     amass_splits = {
-        "train": ["ACCAD", "BMLhandball", "BMLmovi", "BMLrub", "CMU",
-                  "DFaust_67", "EKUT", "Eyes_Japan_Dataset", "KIT",
+        "train": ["KIT", "ACCAD", "BMLhandball", "BMLmovi", "BMLrub",
+                  "CMU", "DFaust_67", "EKUT", "Eyes_Japan_Dataset",
                   "MPI_Limits", "TotalCapture"],
         "valid": ["HumanEva", "MPI_HDM05", "MPI_mosh", "SFU"],
         "test": ["SSM_synced", "Transitions_mocap"]
@@ -160,9 +170,8 @@ if __name__ == "__main__":
     with concurrent.futures.ProcessPoolExecutor() as executor:
         # Iterate over the splits
         position = 0
-        for split, sub_datasets in amass_splits.items():
-            for sub_dataset in sub_datasets:
-                executor.submit(write_tfrecord, amass_path, tfr_path,
-                                split, sub_dataset, position)
-                time.sleep(0.2)
-                position += 1
+        for split in amass_splits.keys():
+            sub_datasets = amass_splits[split]
+            executor.submit(write_tfrecord, amass_path, tfr_path,
+                            split, sub_datasets, position)
+            position += 1
