@@ -17,7 +17,7 @@ import os
 import sys
 import tqdm
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
-import tensorflow as tf
+import tensorflow as tf  # noqa: E402
 
 
 def _bytes_feature(value):

@@ -16,8 +16,8 @@ import numpy as np
 import trimesh
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
-from star.tf.star import STAR
-import tensorflow as tf
+import tensorflow as tf  # noqa: E402
+from star.tf.star import STAR  # noqa: E402
 
 
 FACE_COLORS = (0, 255, 65, 255)  # Color for mesh faces
