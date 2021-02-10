@@ -87,7 +87,7 @@ def amass_example(bdata, framerate_drop=1, max_betas=10):
     num_betas = min(max_betas, bdata["betas"].shape[0])
     # Keep only joint poses, discarding body orientation
     # framerate_drop acts here, picking just part of the array
-    poses = bdata["poses"][0::framerate_drop, 3:72]
+    poses = bdata["poses"][::framerate_drop, 3:72]
     # Store the length (used for parsing)
     num_poses = poses.shape[0]
     # Build feature dict
