@@ -30,7 +30,7 @@ def parse_record(record):
     }
     num = tf.io.parse_single_example(record, num_names)
     feature_names = {
-        "poses": tf.io.FixedLenFeature([num["num_poses"]*69], tf.float32),
+        "poses": tf.io.FixedLenFeature([num["num_poses"]*72], tf.float32),
         "dt": tf.io.FixedLenFeature([], tf.float32),
         "betas": tf.io.FixedLenFeature([num["num_betas"]], tf.float32),
         "gender": tf.io.FixedLenFeature([], tf.int64)
@@ -52,7 +52,7 @@ def decode_record(parsed_record):
         dt (tensor): float tensor with the time step for this sequence.
         gender (string): gender of the subject.
     """
-    poses = tf.reshape(parsed_record["poses"], [-1, 69])
+    poses = tf.reshape(parsed_record["poses"], [-1, 72])
     betas = parsed_record["betas"]
     dt = parsed_record["dt"]
     if parsed_record["gender"] == 1:
