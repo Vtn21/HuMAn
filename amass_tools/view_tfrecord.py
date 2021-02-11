@@ -37,7 +37,7 @@ def parse_record(record):
     }
     num = tf.io.parse_single_example(record, num_names)
     feature_names = {
-        "poses": tf.io.FixedLenFeature([num["num_poses"]*69], tf.float32),
+        "poses": tf.io.FixedLenFeature([num["num_poses"]*72], tf.float32),
         "dt": tf.io.FixedLenFeature([], tf.float32),
         "betas": tf.io.FixedLenFeature([num["num_betas"]], tf.float32),
         "gender": tf.io.FixedLenFeature([], tf.int64)
@@ -59,7 +59,7 @@ def decode_record(parsed_record):
         dt (tensor): float tensor with the time step for this sequence.
         gender (string): gender of the subject.
     """
-    poses = tf.reshape(parsed_record["poses"], [-1, 69])
+    poses = tf.reshape(parsed_record["poses"], [-1, 72])
     betas = tf.reshape(parsed_record["betas"], [1, -1])
     dt = parsed_record["dt"]
     if parsed_record["gender"] == 1:
@@ -74,7 +74,7 @@ def decode_record(parsed_record):
 def update_scene(scene):
     fId = next(frames)
     # Create a body with the STAR model
-    body = star(poses_full[fId:fId+1, :], betas, tf.zeros((1, 3)))
+    body = star(poses[fId:fId+1, :], betas, tf.zeros((1, 3)))
     # Generate corresponding mesh
     body_mesh = trimesh.Trimesh(vertices=body[0], faces=star.f,
                                 face_colors=FACE_COLORS)
@@ -106,9 +106,6 @@ if __name__ == "__main__":
         record = next(iter(dataset))
         # Parse and decode
         poses, betas, dt, gender = decode_record(parse_record(record))
-        # Complete the poses tensor with zeros
-        poses_zeros = tf.zeros((poses.shape[0], 3))
-        poses_full = tf.concat((poses_zeros, poses), 1)
         # Path to the STAR model
         path_model = os.path.join("../../AMASS/models/star", gender + ".npz")
         # Create STAR model
@@ -117,7 +114,7 @@ if __name__ == "__main__":
         frames = iter(range(0, poses.shape[0], int(1/(FPS * dt))))
         fId = next(frames)
         # Create a body with the STAR model
-        body = star(poses_full[fId:fId+1, :], betas, tf.zeros((1, 3)))
+        body = star(poses[fId:fId+1, :], betas, tf.zeros((1, 3)))
         # Generate corresponding mesh
         body_mesh = trimesh.Trimesh(vertices=body[0], faces=star.f,
                                     face_colors=FACE_COLORS)
