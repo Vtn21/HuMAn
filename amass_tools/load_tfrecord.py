@@ -67,7 +67,7 @@ def decode_record(parsed_record):
 if __name__ == "__main__":
     # Path where the TFRecords are located
     tfr_home = "../../AMASS/tfrecords"
-    # Data splits (same as the filenames)
+    # Data splits
     splits = ["train", "valid", "test"]
     for split in splits:
         # Display information
