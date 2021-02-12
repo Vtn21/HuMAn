@@ -12,14 +12,22 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 from tensorflow import keras  # noqa: E402
 from tensorflow.keras import layers  # noqa: E402
+from tensorflow.keras.regularizers import L2  # noqa: E402
+
+
+L2_PENALTY = 0.001
 
 
 def prediction_subnet(selection, other_inputs, name="joint"):
     conc = layers.Concatenate(axis=2, name=f"{name}_concat")(
         [selection] + other_inputs)
-    dense1 = layers.Dense(128, activation="relu", name=f"{name}_dense1")(conc)
-    dense2 = layers.Dense(64, activation="relu", name=f"{name}_dense2")(dense1)
-    linear = layers.Dense(3, name=f"{name}_linear")(dense2)
+    dense1 = layers.Dense(128, activation="relu", name=f"{name}_dense1",
+                          kernel_regularizer=L2(L2_PENALTY))(conc)
+    dropout1 = layers.Dropout(0.1, name=f"{name}_dropout1")(dense1)
+    dense2 = layers.Dense(64, activation="relu", name=f"{name}_dense2",
+                          kernel_regularizer=L2(L2_PENALTY))(dropout1)
+    dropout2 = layers.Dropout(0.1, name=f"{name}_dropout2")(dense2)
+    linear = layers.Dense(3, name=f"{name}_linear")(dropout2)
     return layers.Multiply(name=f"{name}_multiply")([linear, selection])
 
 
@@ -28,16 +36,19 @@ def get_human_model():
     pose_input = keras.Input(shape=(None, 72), name="pose_input")
     selection_input = keras.Input(shape=(None, 72), name="selection_input")
     time_input = keras.Input(shape=(None, 1), name="time_input")
+    # Discard some joints using the selection input
+    pose_select = layers.Multiply(name="pose_select")([pose_input,
+                                                       selection_input])
     # Normalize the pose inputs
-    pose_norm = layers.BatchNormalization(axis=2)(pose_input)
+    pose_norm = layers.BatchNormalization(axis=2)(pose_select)
     # Dropout on pose input (avoid overfitting)
     pose_dropout = layers.Dropout(0.1, name="pose_dropout")(pose_norm)
     # Concatenate all inputs
     concat_inputs = layers.Concatenate(axis=2, name="inputs_concat")(
         [selection_input, pose_dropout, time_input])
     # LSTM layer with dropout
-    seq_output = layers.LSTM(2048, return_sequences=True, name="LSTM")(
-        concat_inputs)
+    seq_output = layers.LSTM(2048, return_sequences=True, name="LSTM",
+                             kernel_regularizer=L2(L2_PENALTY))(concat_inputs)
     seq_dropout = layers.Dropout(0.2, name="LSTM_dropout")(seq_output)
     # Prediction layers
     delta = []
@@ -160,10 +171,10 @@ def get_human_model():
     # Concatenate all predictions
     deltas = layers.Concatenate(axis=2)(delta)
     # Final prediction: pose_input + deltas
-    x = layers.Add()([pose_input, deltas])
+    pose_pred = layers.Add()([pose_select, deltas])
     # Create the model
     model = keras.Model(inputs=[pose_input, selection_input, time_input],
-                        outputs=[x])
+                        outputs=[pose_pred])
     return model
 
 
