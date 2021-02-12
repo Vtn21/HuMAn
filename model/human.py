@@ -2,6 +2,7 @@
 human.py
 
 Defines the HuMAn neural network model.
+Running this script plots a graphical representation to "model.png".
 
 Author: Victor T. N.
 """
