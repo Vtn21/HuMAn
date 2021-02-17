@@ -7,6 +7,8 @@
 
 <div align="center">
 
+  [![Build Status](https://travis-ci.com/Vtn21/HuMAn.svg?branch=main)](https://travis-ci.com/Vtn21/HuMAn)
+  ![Codecov](https://img.shields.io/codecov/c/github/Vtn21/HuMAn)
   [![GitHub issues](https://img.shields.io/github/issues/Vtn21/HuMAn)](https://github.com/Vtn21/HuMAn/issues)
   ![GitHub pull requests](https://img.shields.io/github/issues-pr/Vtn21/HuMAn)
   [![GitHub forks](https://img.shields.io/github/forks/Vtn21/HuMAn)](https://github.com/Vtn21/HuMAn/network)
