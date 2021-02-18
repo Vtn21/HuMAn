@@ -15,6 +15,30 @@ def view_recording(path_star="star",
                    face_color=(0, 255, 65, 255),
                    background_color=(255, 255, 255, 255),
                    resolution=(800, 600)):
+    """Creates an animated visualization of a single AMASS recording.
+
+    Args:
+        path_star (str): Path to the directory containing the STAR models.
+                         Defaults to "star".
+        poses (tf.Tensor): Poses array from the recording.
+                           Defaults to tf.zeros((1, 72)).
+        betas (tf.Tensor): Betas (shape primitives).
+                           Defaults to tf.zeros((1, 10)).
+        trans (tf.Tensor): Translations array from the recording.
+                           Must have the same length as "poses".
+                           Defaults to tf.zeros((1, 3), dtype=tf.float32).
+        dt (float): Time interval between frames. Defaults to 0.1.
+        fps (int): Frames per second of the animation.
+                   Rendering does not achieve high framerates.
+                   Defaults to 10.
+        gender (str): Gender of the recording. Defaults to "neutral".
+        face_color (tuple): Face color of the human representation.
+                            Defaults to green: (0, 255, 65, 255).
+        background_color (tuple): Background color of the viewer.
+                                  Defaults to white: (255, 255, 255, 255).
+        resolution (tuple): Resolution of the viewer window.
+                            Defaults to (800, 600).
+    """
     # Path to the STAR model
     path_model = os.path.join(path_star, str(gender) + ".npz")
     # Create STAR model
@@ -55,6 +79,14 @@ def view_recording(path_star="star",
 
 
 def view_amass_npz(path_npz="recording.npz", path_star="star"):
+    """Visualize a single .npz file from AMASS.
+
+    Args:
+        path_npz (str): Full path to the .npz file to be visualized.
+                        Defaults to "recording.npz".
+        path_star (str): Path to the directory containing the STAR models.
+                         Defaults to "star".
+    """
     # Load the compressed NumPy file
     try:
         body_data = np.load(path_npz)
@@ -75,6 +107,16 @@ def view_amass_npz(path_npz="recording.npz", path_star="star"):
 
 
 def view_tfrecord(path_tfrecord="dataset.tfrecord", path_star="star"):
+    """Visualize a random recording from a TFRecord generated from AMASS.
+    Notice that translation data is not contained in TFRecords, thus the
+    virtual human stays fixed in the origin.
+
+    Args:
+        path_tfrecord (str): Full path to the TFRecord file to be visualized.
+                             Defaults to "dataset.tfrecord".
+        path_star (str): Path to the directory containing the STAR models.
+                         Defaults to "star".
+    """
     # Create a dataset
     dataset = tf.data.TFRecordDataset(path_tfrecord)
     # Shuffle the dataset
