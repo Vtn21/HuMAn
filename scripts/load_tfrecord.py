@@ -2,8 +2,11 @@
 load_tfrecord.py
 
 Load the AMASS TFRecords created with "amass_to_tfrecord.py".
+
 This script is important for testing if data loaded into the TFRecord
-    file retains all necessary information for training.
+file retains all necessary information for training. It also demonstrates
+how to join the multiple TFRecords files from each split into a single
+tf.data dataset.
 
 Author: Victor T. N.
 """
