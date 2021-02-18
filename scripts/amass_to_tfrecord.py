@@ -17,6 +17,10 @@ import sys
 from human.utils.tfrecord import write_tfrecord
 
 
+# Save each recording with the following framerate drop rates
+FRAMERATE_DROP = [1, 2, 4, 10]
+
+
 if __name__ == "__main__":
     # Path to the datasets
     amass_home = "../../AMASS/datasets"
@@ -63,6 +67,7 @@ if __name__ == "__main__":
                 description = sub_ds + " (" + split + ")"
                 # Start the process
                 executor.submit(write_tfrecord, input_path,
-                                output_path, description, position)
+                                output_path, FRAMERATE_DROP,
+                                description, position)
                 # Increment position counter
                 position += 1

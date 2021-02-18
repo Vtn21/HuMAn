@@ -163,8 +163,8 @@ def decode_record(parsed_record):
         dt (tensor): float tensor with the time step for this sequence.
         gender (string): gender of the subject.
     """
-    poses = tf.reshape(parsed_record["poses"], [-1, 72])
-    betas = tf.reshape(parsed_record["betas"], [1, -1])
+    poses = tf.reshape(tf.sparse.to_dense(parsed_record["poses"]), [-1, 72])
+    betas = tf.reshape(tf.sparse.to_dense(parsed_record["betas"]), [1, -1])
     dt = parsed_record["dt"]
     if parsed_record["gender"] == 1:
         gender = "female"

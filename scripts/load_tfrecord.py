@@ -39,6 +39,6 @@ if __name__ == "__main__":
         poses, betas, dt, gender = decode_record(parse_record(record))
         # Show data
         print(f"Poses: {poses}\n")
-        print(f"dt: {dt}\n")
         print(f"betas: {betas}\n")
+        print(f"dt: {dt}\n")
         print(f"gender: {gender}\n\n")
