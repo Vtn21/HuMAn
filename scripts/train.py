@@ -10,28 +10,11 @@ Author: Victor T. N.
 
 import glob
 import os
+from human.model.human import get_human_model
+from human.utils.tfrecord import parse_record
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
-from human import get_human_model  # noqa: E402
 import tensorflow as tf  # noqa: E402
 from tensorflow.keras import optimizers  # noqa: E402
-
-
-def parse_record(record):
-    """Parse a single record from the dataset.
-
-    Args:
-        record (raw dataset record): a single record from the dataset.
-
-    Returns:
-        (parsed record): a single parsed record from the dataset.
-    """
-    feature_names = {
-        "poses": tf.io.VarLenFeature(tf.float32),
-        "dt": tf.io.FixedLenFeature([], tf.float32),
-        "betas": tf.io.VarLenFeature(tf.float32),
-        "gender": tf.io.FixedLenFeature([], tf.int64)
-    }
-    return tf.io.parse_single_example(record, feature_names)
 
 
 if __name__ == '__main__':
