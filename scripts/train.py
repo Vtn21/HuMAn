@@ -8,10 +8,9 @@ Author: Victor T. N.
 """
 
 
-import glob
 import os
 from human.model.human import get_human_model
-from human.utils.tfrecord import parse_record
+from human.utils import dataset
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf  # noqa: E402
 from tensorflow.keras import optimizers  # noqa: E402
@@ -31,19 +30,11 @@ if __name__ == '__main__':
     # Load the datasets
     # Path where the TFRecords are located
     tfr_home = "../../AMASS/tfrecords"
-    # Data splits
-    splits = ["train", "valid", "test"]
-    # Create datasets
-    dataset = {}
-    for split in splits:
-        # Full path to the datasets of a specific split, with wildcards
-        tfr_paths = os.path.join(tfr_home, split, "*.tfrecord")
-        # Expand with glob
-        tfr_list = glob.glob(tfr_paths)
-        # Load the TFRecords as a Dataset
-        raw_ds = tf.data.TFRecordDataset(tfr_list)
-        # Parse the recordings
-        dataset[split] = raw_ds.map(parse_record)
-        # Get a record as example
-        record = next(iter(dataset[split]))
-        print(f"Poses: {record['poses']}")
+    # Load the TFRecords into datasets
+    parsed_ds = dataset.load_all_splits(tfr_home)
+    # Create datasets for all inputs: pose, time, and selection
+    pose_input_ds, pose_target_ds, time_ds = \
+        dataset.create_pose_time_datasets(parsed_ds)
+    # Test
+    record = next(iter(time_ds))
+    print(record)
