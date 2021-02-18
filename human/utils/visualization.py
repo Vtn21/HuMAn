@@ -1,3 +1,12 @@
+"""visualization.py
+
+Contains tools for visualizing AMASS recordings, directly from .npz files or
+from generated TFRecords.
+
+Author: Victor T. N.
+"""
+
+
 import numpy as np
 import os
 import trimesh

@@ -1,3 +1,12 @@
+"""tfrecord.py
+
+Contains tools for loading AMASS .npz data into TFRecords, as well as for
+loading and parsing data from the generated files.
+
+Author: Victor T. N.
+"""
+
+
 import glob
 import numpy as np
 import os
