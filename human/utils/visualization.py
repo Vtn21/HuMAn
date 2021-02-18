@@ -88,11 +88,3 @@ def view_tfrecord(path_tfrecord="dataset.tfrecord", path_star="star"):
                    poses=poses, betas=betas,
                    trans=tf.zeros((poses.shape[0], 3), dtype=tf.float32),
                    dt=dt, gender=gender)
-
-
-if __name__ == "__main__":
-    path_star = "../../../AMASS/models/star"
-    # path_npz = "../../../AMASS/datasets/Eyes_Japan_Dataset/hamada/accident-01-dodge-hamada_poses.npz"
-    # view_amass_npz(path_npz=path_npz, path_star=path_star)
-    path_tfrecord = "../../../AMASS/tfrecords/train/Eyes_Japan_Dataset.tfrecord"
-    view_tfrecord(path_tfrecord=path_tfrecord, path_star=path_star)
