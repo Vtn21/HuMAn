@@ -60,3 +60,9 @@ def map_dataset(data):
               "selection_input": selection_input,
               "time_input": time_input}
     return inputs, pose_target
+
+
+def map_pose_input(data):
+    poses, _, _, _ = decode_record(data)
+    pose_input = poses[:-1]
+    return pose_input
