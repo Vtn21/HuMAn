@@ -12,6 +12,7 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 from tensorflow import keras  # noqa: E402
 from tensorflow.keras import layers  # noqa: E402
+from tensorflow.keras.layers.experimental import preprocessing  # noqa: E402
 from tensorflow.keras.regularizers import L2  # noqa: E402
 
 
@@ -31,18 +32,21 @@ def prediction_subnet(selection, other_inputs, name="joint"):
     return layers.Multiply(name=f"{name}_multiply")([linear, selection])
 
 
-def get_human_model():
+def get_human_model(pose_input_dataset=None):
     # Input layers
     pose_input = keras.Input(shape=(None, 72), name="pose_input")
     selection_input = keras.Input(shape=(None, 72), name="selection_input")
     time_input = keras.Input(shape=(None, 1), name="time_input")
-    # Discard some joints using the selection input
-    pose_select = layers.Multiply(name="pose_select")([pose_input,
-                                                       selection_input])
     # Normalize the pose inputs
-    pose_norm = layers.BatchNormalization(axis=2)(pose_select)
+    normalization = preprocessing.Normalization(axis=2, name="normalization")
+    if pose_input_dataset is not None:
+        normalization.adapt(pose_input_dataset)
+    pose_norm = normalization(pose_input)
+    # Discard some joints using the selection input
+    pose_norm_select = layers.Multiply(name="pose_norm_select")(
+        [pose_norm, selection_input])
     # Dropout on pose input (avoid overfitting)
-    pose_dropout = layers.Dropout(0.1, name="pose_dropout")(pose_norm)
+    pose_dropout = layers.Dropout(0.1, name="pose_dropout")(pose_norm_select)
     # Concatenate all inputs
     concat_inputs = layers.Concatenate(axis=2, name="inputs_concat")(
         [selection_input, pose_dropout, time_input])
@@ -170,7 +174,9 @@ def get_human_model():
                                    name="handR"))
     # Concatenate all predictions
     deltas = layers.Concatenate(axis=2)(delta)
-    # Final prediction: pose_input + deltas
+    # Final prediction: pose_input (selected) + deltas
+    pose_select = layers.Multiply(name="pose_select")(
+        [pose_input, selection_input])
     pose_pred = layers.Add()([pose_select, deltas])
     # Create the model
     model = keras.Model(inputs=[pose_input, selection_input, time_input],
@@ -180,4 +186,4 @@ def get_human_model():
 
 if __name__ == "__main__":
     model = get_human_model()
-    keras.utils.plot_model(model, show_shapes=False)
+    keras.utils.plot_model(model, show_shapes=True)
