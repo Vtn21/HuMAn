@@ -16,16 +16,10 @@ import tensorflow as tf  # noqa: E402
 from tensorflow.keras import optimizers  # noqa: E402
 
 
+SHUFFLE_BUFFER = 1000
+
+
 if __name__ == '__main__':
-    # The HuMAn neural network
-    model = get_human_model()
-    # Create a decaying learning rate
-    lr_schedule = optimizers.schedules.ExponentialDecay(
-        1e-3, decay_steps=1e5, decay_rate=0.96, staircase=True)
-    # Compile the model
-    model.compile(loss=tf.losses.MeanSquaredError(),
-                  optimizer=optimizers.Adam(learning_rate=lr_schedule),
-                  metrics=[tf.metrics.MeanAbsoluteError()])
     # Load the datasets
     # Path where the TFRecords are located
     tfr_home = "../../AMASS/tfrecords"
@@ -34,13 +28,27 @@ if __name__ == '__main__':
     # Create mapped datasets
     mapped_ds = {}
     for split, ds in parsed_ds.items():
-        mapped_ds[split] = ds.map(dataset.map_dataset)
-        # Prepare the dataset for usage
-        # Note: variable length recordings disallow batching
-        mapped_ds[split] = (mapped_ds[split]
-                            .shuffle(1000, reshuffle_each_iteration=True)
-                            .prefetch(-1))
-    # Test
-    for input_example, target_example in mapped_ds["test"].take(1):
-        example_predictions = model(input_example)
-        print(example_predictions.shape)
+        mapped_ds[split] = (ds.map(dataset.map_dataset)
+                            .shuffle(SHUFFLE_BUFFER)
+                            .batch(1).prefetch(-1))
+    # Load only the training pose inputs, to adapt the Normalization layer
+    normalization_ds = (parsed_ds["train"].map(dataset.map_pose_input)
+                        .batch(1).prefetch(-1))
+    # The HuMAn neural network
+    model = get_human_model(normalization_ds)
+    # Create a decaying learning rate
+    lr_schedule = optimizers.schedules.ExponentialDecay(
+        1e-3, decay_steps=1e5, decay_rate=0.96, staircase=True)
+    # Compile the model
+    model.compile(loss=tf.losses.MeanSquaredError(),
+                  optimizer=optimizers.Adam(learning_rate=lr_schedule),
+                  metrics=[tf.metrics.MeanAbsoluteError()])
+    # Create a checkpoint callback
+    ckpt_path = "checkpoints/ckpt_{epoch}"
+    ckpt_cb = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_path)
+    # Create a TensorBoard callback
+    tensorboard = tf.keras.callbacks.TensorBoard(log_dir="logs")
+    # Train the model
+    model.fit(x=mapped_ds["train"], epochs=10,
+              callbacks=[ckpt_cb, tensorboard],
+              validation_data=mapped_ds["valid"])
