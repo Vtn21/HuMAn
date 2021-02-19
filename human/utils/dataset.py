@@ -48,21 +48,15 @@ def load_all_splits(tfr_home, splits=["train", "valid", "test"]):
     return parsed_ds
 
 
-# TODO: write functions to create all four datasets
-def create_pose_time_datasets(parsed_ds):
-    # Function to map into the dataset
-    def pose_input_target_time(data):
-        poses, _, dt, _ = decode_record(data)
-        pose_input = poses[:-1]
-        pose_target = poses[1:]
-        return pose_input, pose_target, dt
-
-    # Instantiate datasets
-    pose_input_ds = {}
-    pose_target_ds = {}
-    time_ds = {}
-    # Iterate through the splits
-    for split in parsed_ds.keys():
-        pose_input_ds[split], pose_target_ds[split], time_ds[split] = \
-            parsed_ds[split].map(pose_input_target_time)
-    return pose_input_ds, pose_target_ds, time_ds
+def map_dataset(data):
+    poses, _, dt, _ = decode_record(data)
+    pose_input = poses[:-1]
+    time_input = dt * tf.ones(shape=(tf.shape(pose_input)[0], 1),
+                              dtype=tf.float32)
+    selection_vec = tf.math.round(tf.random.uniform(shape=(1, 72)))
+    selection_input = tf.tile(selection_vec, [tf.shape(pose_input)[0], 1])
+    pose_target = poses[1:]
+    inputs = {"pose_input": pose_input,
+              "selection_input": selection_input,
+              "time_input": time_input}
+    return inputs, pose_target

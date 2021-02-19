@@ -21,8 +21,7 @@ if __name__ == '__main__':
     model = get_human_model()
     # Create a decaying learning rate
     lr_schedule = optimizers.schedules.ExponentialDecay(
-        1e-3, decay_steps=1e5, decay_rate=0.96, staircase=True
-    )
+        1e-3, decay_steps=1e5, decay_rate=0.96, staircase=True)
     # Compile the model
     model.compile(loss=tf.losses.MeanSquaredError(),
                   optimizer=optimizers.Adam(learning_rate=lr_schedule),
@@ -32,9 +31,14 @@ if __name__ == '__main__':
     tfr_home = "../../AMASS/tfrecords"
     # Load the TFRecords into datasets
     parsed_ds = dataset.load_all_splits(tfr_home)
-    # Create datasets for all inputs: pose, time, and selection
-    pose_input_ds, pose_target_ds, time_ds = \
-        dataset.create_pose_time_datasets(parsed_ds)
+    # Create mapped datasets
+    mapped_ds = {}
+    for split, ds in parsed_ds.items():
+        mapped_ds[split] = ds.map(dataset.map_dataset)
+        mapped_ds[split] = (mapped_ds[split]
+                            .shuffle(1000, reshuffle_each_iteration=True)
+                            .prefetch(-1))
     # Test
-    record = next(iter(time_ds))
-    print(record)
+    for input_example, target_example in mapped_ds["test"].take(1):
+        example_predictions = model(input_example)
+        print(example_predictions.shape)
