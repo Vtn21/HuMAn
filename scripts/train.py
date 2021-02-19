@@ -35,6 +35,8 @@ if __name__ == '__main__':
     mapped_ds = {}
     for split, ds in parsed_ds.items():
         mapped_ds[split] = ds.map(dataset.map_dataset)
+        # Prepare the dataset for usage
+        # Note: variable length recordings disallow batching
         mapped_ds[split] = (mapped_ds[split]
                             .shuffle(1000, reshuffle_each_iteration=True)
                             .prefetch(-1))
