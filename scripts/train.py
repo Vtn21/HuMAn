@@ -8,42 +8,47 @@ Author: Victor T. N.
 """
 
 
-import glob
 import os
 from human.model.human import get_human_model
-from human.utils.tfrecord import parse_record
+from human.utils import dataset
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf  # noqa: E402
 from tensorflow.keras import optimizers  # noqa: E402
 
 
+SHUFFLE_BUFFER = 1000
+
+
 if __name__ == '__main__':
+    # Load the datasets
+    # Path where the TFRecords are located
+    tfr_home = "../../AMASS/tfrecords"
+    # Load the TFRecords into datasets
+    parsed_ds = dataset.load_all_splits(tfr_home)
+    # Create mapped datasets
+    mapped_ds = {}
+    for split, ds in parsed_ds.items():
+        mapped_ds[split] = (ds.map(dataset.map_dataset)
+                            .shuffle(SHUFFLE_BUFFER)
+                            .batch(1).prefetch(-1))
+    # Load only the training pose inputs, to adapt the Normalization layer
+    normalization_ds = (parsed_ds["train"].map(dataset.map_pose_input)
+                        .batch(1).prefetch(-1))
     # The HuMAn neural network
-    model = get_human_model()
+    model = get_human_model(normalization_ds)
     # Create a decaying learning rate
     lr_schedule = optimizers.schedules.ExponentialDecay(
-        1e-3, decay_steps=1e5, decay_rate=0.96, staircase=True
-    )
+        1e-3, decay_steps=1e5, decay_rate=0.96, staircase=True)
     # Compile the model
     model.compile(loss=tf.losses.MeanSquaredError(),
                   optimizer=optimizers.Adam(learning_rate=lr_schedule),
                   metrics=[tf.metrics.MeanAbsoluteError()])
-    # Load the datasets
-    # Path where the TFRecords are located
-    tfr_home = "../../AMASS/tfrecords"
-    # Data splits
-    splits = ["train", "valid", "test"]
-    # Create datasets
-    dataset = {}
-    for split in splits:
-        # Full path to the datasets of a specific split, with wildcards
-        tfr_paths = os.path.join(tfr_home, split, "*.tfrecord")
-        # Expand with glob
-        tfr_list = glob.glob(tfr_paths)
-        # Load the TFRecords as a Dataset
-        raw_ds = tf.data.TFRecordDataset(tfr_list)
-        # Parse the recordings
-        dataset[split] = raw_ds.map(parse_record)
-        # Get a record as example
-        record = next(iter(dataset[split]))
-        print(f"Poses: {record['poses']}")
+    # Create a checkpoint callback
+    ckpt_path = "checkpoints/ckpt_{epoch}"
+    ckpt_cb = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_path)
+    # Create a TensorBoard callback
+    tensorboard = tf.keras.callbacks.TensorBoard(log_dir="logs")
+    # Train the model
+    model.fit(x=mapped_ds["train"], epochs=10,
+              callbacks=[ckpt_cb, tensorboard],
+              validation_data=mapped_ds["valid"])
