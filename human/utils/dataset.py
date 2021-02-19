@@ -49,6 +49,15 @@ def load_all_splits(tfr_home, splits=["train", "valid", "test"]):
 
 
 def map_dataset(data):
+    """Map a parsed dataset into inputs (pose, selection and time) and targets
+    (pose). Call it using the dataset.map method.
+
+    Args:
+        data (tf.data): A parsed sample from the dataset.
+
+    Returns:
+        tuple: (dict_inputs, targets)
+    """
     poses, _, dt, _ = decode_record(data)
     pose_input = poses[:-1]
     time_input = dt * tf.ones(shape=(tf.shape(pose_input)[0], 1),
@@ -63,6 +72,15 @@ def map_dataset(data):
 
 
 def map_pose_input(data):
+    """Map a parsed dataset into the pose input only. Used for adapting the 
+    Normalization layer. Call it using the dataset.map method.
+
+    Args:
+        data (tf.data): A parsed sample from the dataset.
+
+    Returns:
+        pose_input: the input poses.
+    """
     poses, _, _, _ = decode_record(data)
     pose_input = poses[:-1]
     return pose_input
