@@ -9,6 +9,8 @@ Author: Victor T. N.
 
 
 import os
+import time
+import warnings
 from human.model.human import get_human_model
 from human.utils import dataset
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
@@ -16,10 +18,12 @@ import tensorflow as tf  # noqa: E402
 from tensorflow.keras import optimizers  # noqa: E402
 
 
-SHUFFLE_BUFFER = 1000
+os.environ["TF_GPU_THREAD_MODE"] = "gpu_private"
+SHUFFLE_BUFFER = 10000
 
 
 if __name__ == '__main__':
+    warnings.simplefilter("error")
     # Load the datasets
     # Path where the TFRecords are located
     tfr_home = "../../AMASS/tfrecords"
@@ -28,17 +32,21 @@ if __name__ == '__main__':
     # Create mapped datasets
     mapped_ds = {}
     for split, ds in parsed_ds.items():
-        mapped_ds[split] = (ds.map(dataset.map_dataset)
+        mapped_ds[split] = (ds.map(dataset.map_dataset,
+                                   num_parallel_calls=tf.data.AUTOTUNE,
+                                   deterministic=False)
                             .shuffle(SHUFFLE_BUFFER)
-                            .batch(1).prefetch(-1))
+                            .padded_batch(8).prefetch(tf.data.AUTOTUNE))
     # Load only the training pose inputs, to adapt the Normalization layer
-    normalization_ds = (parsed_ds["train"].map(dataset.map_pose_input)
-                        .batch(1).prefetch(-1))
+    norm_ds = (parsed_ds["train"].map(dataset.map_pose_input,
+                                      num_parallel_calls=tf.data.AUTOTUNE,
+                                      deterministic=False)
+               .batch(1).prefetch(tf.data.AUTOTUNE))
     # The HuMAn neural network
-    model = get_human_model(normalization_ds)
+    model = get_human_model(norm_ds)
     # Create a decaying learning rate
     lr_schedule = optimizers.schedules.ExponentialDecay(
-        1e-3, decay_steps=1e5, decay_rate=0.96, staircase=True)
+        5e-3, decay_steps=1e5, decay_rate=0.96, staircase=True)
     # Compile the model
     model.compile(loss=tf.losses.MeanSquaredError(),
                   optimizer=optimizers.Adam(learning_rate=lr_schedule),
@@ -47,8 +55,10 @@ if __name__ == '__main__':
     ckpt_path = "checkpoints/ckpt_{epoch}"
     ckpt_cb = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_path)
     # Create a TensorBoard callback
-    tensorboard = tf.keras.callbacks.TensorBoard(log_dir="logs")
+    tensorboard = tf.keras.callbacks.TensorBoard(
+        log_dir=f"logs/{int(time.time())}", update_freq=100,
+        profile_batch=(100, 500))
     # Train the model
     model.fit(x=mapped_ds["train"], epochs=10,
-              callbacks=[ckpt_cb, tensorboard],
+              callbacks=[ckpt_cb],
               validation_data=mapped_ds["valid"])
