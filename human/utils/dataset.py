@@ -72,7 +72,7 @@ def map_dataset(data):
 
 
 def map_pose_input(data):
-    """Map a parsed dataset into the pose input only. Used for adapting the 
+    """Map a parsed dataset into the pose input only. Used for adapting the
     Normalization layer. Call it using the dataset.map method.
 
     Args:
