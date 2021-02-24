@@ -10,7 +10,6 @@ Author: Victor T. N.
 
 import os
 import time
-import warnings
 from human.model.human import get_human_model
 from human.utils import dataset
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
@@ -23,7 +22,6 @@ SHUFFLE_BUFFER = 10000
 
 
 if __name__ == '__main__':
-    warnings.simplefilter("error")
     # Load the datasets
     # Path where the TFRecords are located
     tfr_home = "../../AMASS/tfrecords"
