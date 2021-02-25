@@ -1,5 +1,13 @@
 """preprocessing.py
 
+Contains a single function for reading the .npz files from the original
+AMASS dataset, preprocessing them and saving into TFRecords files.
+
+This function is intended to process a single sub-dataset at a time,
+making it suitable for multiprocessing.
+
+See the "preprocess_amass.py" script for example usage.
+
 Author: Victor T. N.
 """
 
