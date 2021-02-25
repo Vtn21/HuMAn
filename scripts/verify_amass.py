@@ -23,13 +23,11 @@ import numpy as np
 import os
 
 
-def check_amass(input_path, description, position):
+def check_amass(input_path, delete_no_pose):
     # Path to input files (.npz) with wildcards
     npz_path = os.path.join(input_path, "*/*.npz")
-    # Expand with glob
-    npz_list = glob.glob(npz_path)
     # Iterate over all input files
-    for npz_file in npz_list:
+    for npz_file in glob.iglob(npz_path):
         # Try to load specified file
         try:
             body_data = np.load(npz_file)
@@ -38,7 +36,17 @@ def check_amass(input_path, description, position):
         except ValueError:
             print(f"allow_pickle=True required to load {npz_file}")
         else:
-            if not np.any(np.isfinite(body_data["poses"])):
+            if "poses" not in list(body_data.keys()):
+                print(f"{npz_file} does not contain pose data")
+                if delete_no_pose:
+                    body_data.close()
+                    try:
+                        os.remove(npz_file)
+                    except OSError:
+                        print(f"Unable to remove {npz_file}")
+                    else:
+                        print(f"Deleted {npz_file}")
+            elif not np.any(np.isfinite(body_data["poses"])):
                 print(f"{npz_file} contains non-finite values")
 
 
@@ -54,14 +62,9 @@ if __name__ == "__main__":
                 "MPI_mosh", "SFU", "SSM_synced", "Transitions_mocap"]
     # Create a multiprocessing executor
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        # This position variable controls the position of progress bars
-        position = 0
         # Iterate over the sub-datasets
         for ds in amass_ds:
             # Create the input path
             input_path = os.path.join(amass_home, ds)
-            # Create a description string
             # Start the process
-            executor.submit(check_amass, input_path, ds, position)
-            # Increment position counter
-            position += 1
+            executor.submit(check_amass, input_path, True)
