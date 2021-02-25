@@ -1,17 +1,9 @@
-"""amass_to_tfrecord.py
+"""stats_amass.py
 
-Load the downloaded AMASS database (.npz files) into TFRecords.
-
-This is the preferred binary file for TensorFlow, and has performance
-advantages over loading the .npz files one by one.
-
-This script can be executed just once after downloading and extracting
-the AMASS dataset from https://amass.is.tue.mpg.de/. It uses the splits
-recommended by the authors of the dataset.
-
-A single TFRecord file is created for each AMASS sub-dataset. When loading
-them for training or testing, they are easily joined together into the splits
-using tf.data.TFRecordDataset.
+A simple helper script to visualize the length and framerates from the whole
+AMASS dataset. This was mainly used to calibrate the recording windowing
+parameters, used for creating fixed-length sequences for more efficient
+training (as they allow batching).
 
 Author: Victor T. N.
 """
