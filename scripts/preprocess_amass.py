@@ -1,5 +1,9 @@
 """preprocess_amass.py"
 
+Uses the "amass_to_tfrecord" preprocessing function to create TFRecord files
+from AMASS .npz files. This functions also handles preprocessing and data
+augmentation, as well as converting recording to fixed-length sequences.
+
 Author: Victor T. N.
 """
 
