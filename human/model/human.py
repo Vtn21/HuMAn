@@ -20,9 +20,8 @@ from tensorflow.keras.regularizers import L2  # noqa: E402
 L2_PENALTY = 0.001
 
 
-def prediction_subnet(selection, other_inputs, name="joint"):
-    conc = layers.Concatenate(axis=2, name=f"{name}_concat")(
-        [selection] + other_inputs)
+def prediction_subnet(selection, inputs, name="joint"):
+    conc = layers.Concatenate(axis=2, name=f"{name}_concat")(inputs)
     dense1 = layers.Dense(64, activation="relu", name=f"{name}_dense1",
                           kernel_regularizer=L2(L2_PENALTY))(conc)
     dropout1 = layers.Dropout(0.1, name=f"{name}_dropout1")(dense1)
@@ -49,9 +48,9 @@ def get_human_model(pose_input_dataset=None):
         [pose_norm, selection_input])
     # Dropout on pose input (avoid overfitting)
     pose_dropout = layers.Dropout(0.1, name="pose_dropout")(pose_norm_select)
-    # Concatenate all inputs
+    # Concatenate pose and time inputs
     concat_inputs = layers.Concatenate(axis=2, name="inputs_concat")(
-        [selection_input, pose_dropout, time_input])
+        [pose_dropout, time_input])
     # LSTM layer with dropout
     seq_output = layers.LSTM(1024, return_sequences=True, name="LSTM",
                              kernel_regularizer=L2(L2_PENALTY))(concat_inputs)
