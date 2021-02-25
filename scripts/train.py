@@ -18,7 +18,8 @@ from tensorflow.keras import optimizers  # noqa: E402
 
 
 os.environ["TF_GPU_THREAD_MODE"] = "gpu_private"
-SHUFFLE_BUFFER = 10000
+SHUFFLE_BUFFER = 1000
+BATCH_SIZE = 32
 
 
 if __name__ == '__main__':
@@ -30,16 +31,20 @@ if __name__ == '__main__':
     # Create mapped datasets
     mapped_ds = {}
     for split, ds in parsed_ds.items():
-        mapped_ds[split] = (ds.map(dataset.map_dataset,
-                                   num_parallel_calls=tf.data.AUTOTUNE,
-                                   deterministic=False)
+        mapped_ds[split] = (ds
+                            .map(dataset.map_dataset,
+                                 num_parallel_calls=tf.data.AUTOTUNE,
+                                 deterministic=False)
                             .shuffle(SHUFFLE_BUFFER)
-                            .padded_batch(8).prefetch(tf.data.AUTOTUNE))
+                            .batch(BATCH_SIZE)
+                            .prefetch(tf.data.AUTOTUNE))
     # Load only the training pose inputs, to adapt the Normalization layer
-    norm_ds = (parsed_ds["train"].map(dataset.map_pose_input,
-                                      num_parallel_calls=tf.data.AUTOTUNE,
-                                      deterministic=False)
-               .batch(1).prefetch(tf.data.AUTOTUNE))
+    norm_ds = (parsed_ds["train"]
+               .map(dataset.map_pose_input,
+                    num_parallel_calls=tf.data.AUTOTUNE,
+                    deterministic=False)
+               .batch(32)
+               .prefetch(tf.data.AUTOTUNE))
     # The HuMAn neural network
     model = get_human_model(norm_ds)
     # Create a decaying learning rate
@@ -51,12 +56,14 @@ if __name__ == '__main__':
                   metrics=[tf.metrics.MeanAbsoluteError()])
     # Create a checkpoint callback
     ckpt_path = "checkpoints/ckpt_{epoch}"
-    ckpt_cb = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_path)
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_path)
     # Create a TensorBoard callback
     tensorboard = tf.keras.callbacks.TensorBoard(
         log_dir=f"logs/{int(time.time())}", update_freq=100,
         profile_batch=(100, 500))
+    # Create an early stopping callback (based on validation loss)
+    early_stop = tf.keras.callbacks.EarlyStopping()
     # Train the model
     model.fit(x=mapped_ds["train"], epochs=10,
-              callbacks=[ckpt_cb],
+              callbacks=[checkpoint, tensorboard, early_stop],
               validation_data=mapped_ds["valid"])
