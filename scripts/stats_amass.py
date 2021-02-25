@@ -14,7 +14,6 @@ import glob
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import pdb
 
 
 def extract_stats(input_path):
@@ -72,4 +71,3 @@ if __name__ == "__main__":
         axs[i].hist(result[key], bins=20)
         axs[i].set_title(key)
     plt.show()
-    pdb.set_trace()
