@@ -19,7 +19,7 @@ from tensorflow.keras import optimizers  # noqa: E402
 
 os.environ["TF_GPU_THREAD_MODE"] = "gpu_private"
 SHUFFLE_BUFFER = 1000
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 
 
 if __name__ == '__main__':
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     for split, ds in parsed_ds.items():
         mapped_ds[split] = (ds
                             .map(dataset.map_dataset,
-                                 num_parallel_calls=tf.data.AUTOTUNE,
+                                 num_parallel_calls=os.cpu_count(),
                                  deterministic=False)
                             .shuffle(SHUFFLE_BUFFER)
                             .batch(BATCH_SIZE)
@@ -41,9 +41,9 @@ if __name__ == '__main__':
     # Load only the training pose inputs, to adapt the Normalization layer
     norm_ds = (parsed_ds["train"]
                .map(dataset.map_pose_input,
-                    num_parallel_calls=tf.data.AUTOTUNE,
+                    num_parallel_calls=os.cpu_count(),
                     deterministic=False)
-               .batch(32)
+               .batch(BATCH_SIZE)
                .prefetch(tf.data.AUTOTUNE))
     # The HuMAn neural network
     model = get_human_model(norm_ds)
