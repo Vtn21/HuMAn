@@ -8,7 +8,9 @@ Author: Victor T. N.
 """
 
 
+import numpy as np
 import os
+import pathlib
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf  # noqa: E402
 from tensorflow import keras  # noqa: E402
@@ -18,6 +20,8 @@ from tensorflow.keras.regularizers import L2  # noqa: E402
 
 
 L2_PENALTY = 0.001
+NPZ_PATH = os.path.join(pathlib.Path(__file__).parent.absolute(),
+                        "normalization.npz")
 
 
 def prediction_subnet(selection, inputs, name="joint"):
@@ -32,16 +36,46 @@ def prediction_subnet(selection, inputs, name="joint"):
     return layers.Multiply(name=f"{name}_multiply")([linear, selection])
 
 
-def get_human_model(pose_input_dataset=None):
+def normalization_layer(input_data):
+    if isinstance(input_data, tf.data.Dataset):
+        normalization = preprocessing.Normalization(axis=2,
+                                                    name="normalization")
+        normalization.adapt(input_data)
+        # Save mean and variance to npz file, for later usage
+        np.savez(NPZ_PATH, mean=normalization.mean.numpy(),
+                 variance=normalization.variance.numpy())
+        return normalization
+    elif isinstance(input_data, str):
+        n = np.load(input_data)
+        mean = tf.convert_to_tensor(n["mean"])
+        variance = tf.convert_to_tensor(n["variance"])
+        normalization = preprocessing.Normalization(axis=2, mean=mean,
+                                                    variance=variance,
+                                                    name="normalization")
+        return normalization
+    else:
+        raise ValueError("Invalid input data provided for normalization")
+
+
+def get_human_model(pose_input_dataset=None, normalization_npz=NPZ_PATH):
     # Input layers
     pose_input = keras.Input(shape=(None, 72), name="pose_input")
     selection_input = keras.Input(shape=(None, 72), name="selection_input")
     time_input = keras.Input(shape=(None, 1), name="time_input")
     # Normalize the pose inputs
-    normalization = preprocessing.Normalization(axis=2, name="normalization")
-    if pose_input_dataset is not None:
-        normalization.adapt(pose_input_dataset)
-        print(f"Mean: {normalization.mean} Variance: {normalization.variance}")
+    try:
+        # Try to load the specified npz file and create the normalization layer
+        normalization = normalization_layer(normalization_npz)
+    except Exception as ex:
+        print(f"Unable to load {normalization_npz}: {ex}")
+        # Try to use the pose dataset instead
+        if pose_input_dataset is not None:
+            print("Falling back to provided dataset")
+            normalization = normalization_layer(pose_input_dataset)
+        else:
+            raise ValueError("No dataset provided for fallback; unable to\
+                             create normalization layer.")
+    # Apply the normalization layer to the pose input
     pose_norm = normalization(pose_input)
     # Discard some joints using the selection input
     pose_norm_select = layers.Multiply(name="pose_norm_select")(
