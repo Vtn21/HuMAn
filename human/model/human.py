@@ -28,11 +28,14 @@ def prediction_subnet(selection, inputs, name="joint"):
     conc = layers.Concatenate(axis=2, name=f"{name}_concat")(inputs)
     dense1 = layers.Dense(64, activation="tanh", name=f"{name}_dense1",
                           kernel_regularizer=L2(L2_PENALTY))(conc)
-    dropout1 = layers.Dropout(0.1, name=f"{name}_dropout1")(dense1)
+    dropout1 = layers.Dropout(0.2, name=f"{name}_dropout1")(dense1)
     dense2 = layers.Dense(32, activation="tanh", name=f"{name}_dense2",
                           kernel_regularizer=L2(L2_PENALTY))(dropout1)
-    dropout2 = layers.Dropout(0.1, name=f"{name}_dropout2")(dense2)
-    linear = layers.Dense(3, name=f"{name}_linear")(dropout2)
+    dropout2 = layers.Dropout(0.2, name=f"{name}_dropout2")(dense2)
+    dense3 = layers.Dense(32, activation="tanh", name=f"{name}_dense3",
+                          kernel_regularizer=L2(L2_PENALTY))(dropout2)
+    dropout3 = layers.Dropout(0.2, name=f"{name}_dropout3")(dense3)
+    linear = layers.Dense(3, name=f"{name}_linear")(dropout3)
     return layers.Multiply(name=f"{name}_multiply")([linear, selection])
 
 
