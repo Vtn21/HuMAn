@@ -1,17 +1,8 @@
-"""amass_to_tfrecord.py
+"""preprocess_amass.py"
 
-Load the downloaded AMASS database (.npz files) into TFRecords.
-
-This is the preferred binary file for TensorFlow, and has performance
-advantages over loading the .npz files one by one.
-
-This script can be executed just once after downloading and extracting
-the AMASS dataset from https://amass.is.tue.mpg.de/. It uses the splits
-recommended by the authors of the dataset.
-
-A single TFRecord file is created for each AMASS sub-dataset. When loading
-them for training or testing, they are easily joined together into the splits
-using tf.data.TFRecordDataset.
+Uses the "amass_to_tfrecord" preprocessing function to create TFRecord files
+from AMASS .npz files. This functions also handles preprocessing and data
+augmentation, as well as converting recording to fixed-length sequences.
 
 Author: Victor T. N.
 """
@@ -20,11 +11,11 @@ Author: Victor T. N.
 import concurrent.futures
 import os
 import sys
-from human.utils.tfrecord import write_tfrecord
+from human.utils.preprocessing import amass_to_tfrecord
 
 
-# Save each recording with the following framerate drop rates
-FRAMERATE_DROP = [1, 2, 4, 10]
+# Use the following framerate drop rates to augment data
+FRAMERATE_DROP = [1, 2, 4, 5]
 
 
 if __name__ == "__main__":
@@ -42,7 +33,7 @@ if __name__ == "__main__":
     }
     # Path to save the TFRecords files
     tfr_home = "../../AMASS/tfrecords"
-    # Iterate over all splits
+    # Iterate over all splits, to create subdirectories if needed
     for split in amass_splits.keys():
         # Path for the corresponding subdirectory
         tfr_subdir = os.path.join(tfr_home, split)
@@ -56,24 +47,25 @@ if __name__ == "__main__":
             sys.exit()
         else:
             print(f"Creating new directory {tfr_subdir}.")
-    # Create a multiprocessing executor
     with concurrent.futures.ProcessPoolExecutor() as executor:
         # This position variable controls the position of progress bars
-        position = 0
+        tqdm_pos = 0
         # Iterate over all splits
         for split in amass_splits.keys():
             # Iterate over the sub-datasets
             for sub_ds in amass_splits[split]:
                 # Create the input path
-                input_path = os.path.join(amass_home, sub_ds)
+                input_directory = os.path.join(amass_home, sub_ds)
                 # Create the output path
-                output_path = os.path.join(tfr_home, split,
-                                           sub_ds + ".tfrecord")
+                output_tfrecord = os.path.join(tfr_home, split,
+                                               sub_ds + ".tfrecord")
                 # Create a description string
-                description = sub_ds + " (" + split + ")"
+                tqdm_desc = sub_ds + " (" + split + ")"
                 # Start the process
-                executor.submit(write_tfrecord, input_path,
-                                output_path, FRAMERATE_DROP,
-                                description, position)
+                executor.submit(amass_to_tfrecord,
+                                input_directory=input_directory,
+                                output_tfrecord=output_tfrecord,
+                                framerate_drop=FRAMERATE_DROP,
+                                tqdm_desc=tqdm_desc, tqdm_pos=tqdm_pos)
                 # Increment position counter
-                position += 1
+                tqdm_pos += 1
