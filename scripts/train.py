@@ -33,7 +33,7 @@ if __name__ == '__main__':
     for split, ds in parsed_ds.items():
         mapped_ds[split] = (ds
                             .map(dataset.map_dataset,
-                                 num_parallel_calls=os.cpu_count(),
+                                 num_parallel_calls=tf.data.AUTOTUNE,
                                  deterministic=False)
                             .shuffle(SHUFFLE_BUFFER)
                             .batch(BATCH_SIZE)
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     # Load only the training pose inputs, to adapt the Normalization layer
     norm_ds = (parsed_ds["train"]
                .map(dataset.map_pose_input,
-                    num_parallel_calls=os.cpu_count(),
+                    num_parallel_calls=tf.data.AUTOTUNE,
                     deterministic=False)
                .batch(BATCH_SIZE)
                .prefetch(tf.data.AUTOTUNE))
@@ -62,8 +62,8 @@ if __name__ == '__main__':
         log_dir=f"logs/{int(time.time())}", update_freq=100,
         profile_batch=(100, 500))
     # Create an early stopping callback (based on validation loss)
-    early_stop = tf.keras.callbacks.EarlyStopping()
+    early_stop = tf.keras.callbacks.EarlyStopping(patience=2)
     # Train the model
-    model.fit(x=mapped_ds["train"], epochs=10,
+    model.fit(x=mapped_ds["train"], epochs=20,
               callbacks=[checkpoint, tensorboard, early_stop],
               validation_data=mapped_ds["valid"])
