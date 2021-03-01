@@ -22,7 +22,7 @@ import tensorflow as tf  # noqa: E402
 
 
 def amass_to_tfrecord(input_directory, output_tfrecord, framerate_drop=[1],
-                      window_size=200, window_stride=50, max_betas=10,
+                      window_size=256, window_stride=64, max_betas=10,
                       tqdm_desc="Dataset (split)", tqdm_pos=0):
     # Path to all input files (.npz) from this sub-dataset
     npz_list = glob.glob(os.path.join(input_directory, "*/*.npz"))
