@@ -74,6 +74,19 @@ def map_dataset(data):
     return inputs, pose_target
 
 
+def map_test(data):
+    poses, betas, dt, gender = decode_record(data)
+    pose_input = poses[:-1]
+    time_input = dt * tf.ones(shape=(tf.shape(pose_input)[0], 1),
+                              dtype=tf.float32)
+    selection_input = tf.ones(shape=tf.shape(pose_input))
+    inputs = {"pose_input": pose_input,
+              "selection_input": selection_input,
+              "time_input": time_input}
+    aux = {"betas": betas, "dt": dt, "gender": gender}
+    return inputs, aux
+
+
 def map_pose_input(data):
     """Map a parsed dataset into the pose input only. Used for adapting the
     Normalization layer. Call it using the dataset.map method.
