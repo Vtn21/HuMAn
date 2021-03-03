@@ -67,11 +67,24 @@ def map_dataset(data):
     offset = tf.random.uniform(shape=(), minval=-0.5, maxval=0.5)
     selection_vec = tf.math.round(rand_unif + offset*tf.ones(shape=(1, 72)))
     selection_input = tf.tile(selection_vec, [tf.shape(pose_input)[0], 1])
-    pose_target = poses[1:]
+    pose_target = tf.multiply(poses[1:], selection_input)
     inputs = {"pose_input": pose_input,
               "selection_input": selection_input,
               "time_input": time_input}
     return inputs, pose_target
+
+
+def map_test(data):
+    poses, betas, dt, gender = decode_record(data)
+    pose_input = poses[:-1]
+    time_input = dt * tf.ones(shape=(tf.shape(pose_input)[0], 1),
+                              dtype=tf.float32)
+    selection_input = tf.ones(shape=tf.shape(pose_input))
+    inputs = {"pose_input": pose_input,
+              "selection_input": selection_input,
+              "time_input": time_input}
+    aux = {"betas": betas, "dt": dt, "gender": gender}
+    return inputs, aux
 
 
 def map_pose_input(data):

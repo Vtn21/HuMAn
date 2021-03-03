@@ -22,7 +22,7 @@ def view_recording(path_star="star",
                    trans=tf.zeros((1, 3), dtype=tf.float32),
                    dt=0.1, fps=10, gender="neutral",
                    face_color=(0, 255, 65, 255),
-                   background_color=(255, 255, 255, 255),
+                   color_background=(255, 255, 255, 255),
                    resolution=(800, 600)):
     """Creates an animated visualization of a single AMASS recording.
 
@@ -43,7 +43,7 @@ def view_recording(path_star="star",
         gender (str): Gender of the recording. Defaults to "neutral".
         face_color (tuple): Face color of the human representation.
                             Defaults to green: (0, 255, 65, 255).
-        background_color (tuple): Background color of the viewer.
+        color_background (tuple): Background color of the viewer.
                                   Defaults to white: (255, 255, 255, 255).
         resolution (tuple): Resolution of the viewer window.
                             Defaults to (800, 600).
@@ -80,7 +80,73 @@ def view_recording(path_star="star",
     try:
         scene.show(callback=update_scene,
                    smooth=False,
-                   background=background_color,
+                   background=color_background,
+                   resolution=resolution,
+                   callback_period=1/fps)
+    except StopIteration:
+        return
+
+
+def view_test(path_star="star",
+              poses_prediction=tf.zeros((1, 72), dtype=tf.float32),
+              poses_ground_truth=tf.zeros((1, 72), dtype=tf.float32),
+              betas=tf.zeros((1, 10), dtype=tf.float32),
+              dt=0.1, fps=10, gender="neutral",
+              color_prediction=(228, 175, 19, 200),
+              color_ground_truth=(0, 255, 65, 200),
+              color_background=(255, 255, 255, 255),
+              resolution=(800, 600)):
+    # Fixed translation tensors
+    trans_prediction = tf.constant([[0, 0, 0]], dtype=tf.float32)
+    trans_ground_truth = tf.constant([[0, 0, 0]], dtype=tf.float32)
+    # Path to the STAR model
+    path_model = os.path.join(path_star, str(gender) + ".npz")
+    # Create STAR model
+    star = STAR(path_model=path_model, num_betas=betas.shape[1])
+    # Create iterator for the frame number
+    frames = iter(range(0, poses_prediction.shape[0], int(1/(fps*dt))))
+    fId = next(frames)
+    # Create two bodies and corresponding meshes
+    body_prediction = star(poses_prediction[fId:fId+1, :72],
+                           betas, trans_prediction)
+    mesh_prediction = trimesh.Trimesh(vertices=body_prediction[0],
+                                      faces=star.f,
+                                      face_colors=color_prediction)
+    body_ground_truth = star(poses_ground_truth[fId:fId+1, :72],
+                             betas, trans_ground_truth)
+    mesh_ground_truth = trimesh.Trimesh(vertices=body_ground_truth[0],
+                                        faces=star.f,
+                                        face_colors=color_ground_truth)
+    # Create a scene with this mesh
+    scene = trimesh.Scene(mesh_prediction)
+    scene.add_geometry(mesh_ground_truth)
+
+    # Create a callback
+    def update_scene(scene):
+        fId = next(frames)
+        # Create two bodies and corresponding meshes
+        body_prediction = star(poses_prediction[fId:fId+1, :72],
+                               betas, trans_prediction)
+        mesh_prediction = trimesh.Trimesh(vertices=body_prediction[0],
+                                          faces=star.f,
+                                          face_colors=color_prediction)
+        body_ground_truth = star(poses_ground_truth[fId:fId+1, :72],
+                                 betas, trans_ground_truth)
+        mesh_ground_truth = trimesh.Trimesh(vertices=body_ground_truth[0],
+                                            faces=star.f,
+                                            face_colors=color_ground_truth)
+        # Delete the previous meshes from the scene
+        scene.delete_geometry("geometry_0")
+        scene.delete_geometry("geometry_1")
+        # Add the current geometries to the scene
+        scene.add_geometry(mesh_prediction)
+        scene.add_geometry(mesh_ground_truth)
+
+    # Create a viewer
+    try:
+        scene.show(callback=update_scene,
+                   smooth=False,
+                   background=color_background,
                    resolution=resolution,
                    callback_period=1/fps)
     except StopIteration:
