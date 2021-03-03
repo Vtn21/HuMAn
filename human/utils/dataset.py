@@ -67,7 +67,7 @@ def map_dataset(data):
     offset = tf.random.uniform(shape=(), minval=-0.5, maxval=0.5)
     selection_vec = tf.math.round(rand_unif + offset*tf.ones(shape=(1, 72)))
     selection_input = tf.tile(selection_vec, [tf.shape(pose_input)[0], 1])
-    pose_target = poses[1:]
+    pose_target = tf.multiply(poses[1:], selection_input)
     inputs = {"pose_input": pose_input,
               "selection_input": selection_input,
               "time_input": time_input}
