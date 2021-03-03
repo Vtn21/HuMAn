@@ -133,9 +133,9 @@ class HuMAn(tf.keras.Model):
 
     def call(self, inputs, state=None, return_state=False, training=False):
         # Parsing inputs
-        pose_input = inputs[0]
-        selection_input = inputs[1]
-        time_input = inputs[2]
+        pose_input = inputs["pose_input"]
+        selection_input = inputs["selection_input"]
+        time_input = inputs["time_input"]
         # Forward pass
         x = self.normalization(pose_input)
         x = self.pose_select([x, selection_input])
