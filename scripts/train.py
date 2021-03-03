@@ -10,7 +10,7 @@ Author: Victor T. N.
 
 import os
 import time
-from human.model.human import get_human_model
+from human.model.human import HuMAn
 from human.utils import dataset
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf  # noqa: E402
@@ -46,17 +46,18 @@ if __name__ == '__main__':
                .batch(BATCH_SIZE)
                .prefetch(tf.data.AUTOTUNE))
     # The HuMAn neural network
-    model = get_human_model(norm_ds)
+    model = HuMAn(norm_dataset=norm_ds)
     # Create a decaying learning rate
     lr_schedule = optimizers.schedules.ExponentialDecay(
-        5e-3, decay_steps=1e5, decay_rate=0.96, staircase=True)
+        1e-3, decay_steps=1e5, decay_rate=0.96, staircase=True)
     # Compile the model
     model.compile(loss=tf.losses.MeanSquaredError(),
                   optimizer=optimizers.Adam(learning_rate=lr_schedule),
                   metrics=[tf.metrics.MeanAbsoluteError()])
     # Create a checkpoint callback
     ckpt_path = "checkpoints/ckpt_{epoch}"
-    checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_path)
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_path,
+                                                    save_weights_only=True)
     # Create a TensorBoard callback
     tensorboard = tf.keras.callbacks.TensorBoard(
         log_dir=f"logs/{int(time.time())}", update_freq=100,
