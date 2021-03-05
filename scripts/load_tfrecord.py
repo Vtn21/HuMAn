@@ -40,9 +40,10 @@ if __name__ == "__main__":
         # Take a record as example
         record = next(iter(dataset))
         # Parse and decode
-        poses, betas, dt, gender = decode_record(parse_record(record))
+        poses, seq_len, betas, dt, gender = decode_record(parse_record(record))
         # Show data
-        print(f"Poses: {poses}\n")
+        print(f"poses: {poses}\n")
+        print(f"seq_length: {seq_len}\n")
         print(f"betas: {betas}\n")
         print(f"dt: {dt}\n")
         print(f"gender: {gender}\n\n")
