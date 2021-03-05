@@ -22,8 +22,8 @@ import tensorflow as tf  # noqa: E402
 
 
 def amass_to_tfrecord(input_directory, output_tfrecord, framerate_drop=[1],
-                      window_size=256, window_stride=64, max_betas=10,
-                      tqdm_desc="Dataset (split)", tqdm_pos=0):
+                      seq_length=256, percent_stride=0.25, max_horizon=0.5,
+                      max_betas=10, tqdm_desc="Dataset (split)", tqdm_pos=0):
     # Path to all input files (.npz) from this sub-dataset
     npz_list = glob.glob(os.path.join(input_directory, "*/*.npz"))
     # Create a TFRecord writer
@@ -76,13 +76,19 @@ def amass_to_tfrecord(input_directory, output_tfrecord, framerate_drop=[1],
                     # Data augmentation: framerate drop
                     for fr_drop in framerate_drop:
                         # Fill the "dt" field in the feature dict
-                        feature["dt"] = features._float_feature(
-                            [fr_drop/body_data["mocap_framerate"]])
+                        dt = fr_drop/body_data["mocap_framerate"]
+                        feature["dt"] = features._float_feature([dt])
                         # Keep only 24 first joints (72 angles), which discards
                         # hands and follows the STAR model definition, while
                         # also skipping frames to simulate a lower framerate
                         poses = body_data["poses"][::fr_drop, :72]
-                        # Discard recordings shorter that the window size
+                        # Calculate the actual window size, composed by a fixed
+                        # number of frames defined by seq_length and a variable
+                        # extra length to enable multiple prediction horizons
+                        window_size = int(seq_length + max_horizon/dt)
+                        # Define a stride for this specific window size
+                        window_stride = int(window_size*percent_stride)
+                        # Discard recordings shorter than the window size
                         if poses.shape[0] < window_size:
                             continue
                         else:
