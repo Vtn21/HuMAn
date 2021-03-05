@@ -68,9 +68,10 @@ def map_dataset(data):
     selection_vec = tf.math.round(rand_unif + offset*tf.ones(shape=[1, 72]))
     selection_input = tf.tile(selection_vec, [seq_length, 1])
     # Create a pose target with a random time horizon
-    shift = tf.random.uniform(shape=[], dtype=tf.int64, minval=0,
-                              maxval=poses.shape[0]-seq_length)
-    horizon_input = shift*dt
+    max_shift = tf.shape(poses, out_type=tf.int64)[0] - seq_length
+    shift = tf.random.uniform(shape=[], minval=0, maxval=max_shift,
+                              dtype=tf.int64)
+    horizon_input = tf.cast(shift, tf.float32)*dt
     pose_target = tf.multiply(poses[shift:seq_length+shift], selection_input)
     inputs = {"pose_input": pose_input,
               "selection_input": selection_input,
