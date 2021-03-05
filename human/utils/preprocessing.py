@@ -22,7 +22,7 @@ import tensorflow as tf  # noqa: E402
 
 
 def amass_to_tfrecord(input_directory, output_tfrecord, framerate_drop=[1],
-                      seq_length=256, max_horizon=0.5, percent_stride=0.25, 
+                      seq_length=256, max_horizon=0.5, percent_stride=0.25,
                       max_betas=10, tqdm_desc="Dataset (split)", tqdm_pos=0):
     """Preprocesses and saves a full sub-dataset from AMASS (from .npz files)
     into a TFRecord file. This function is suitable for multiprocessing.
@@ -103,7 +103,9 @@ def amass_to_tfrecord(input_directory, output_tfrecord, framerate_drop=[1],
                         "gender": features._int64_feature([gender_int]),
                         # Shape components (betas)
                         "betas": features._float_feature(
-                            body_data["betas"][:num_betas])
+                            body_data["betas"][:num_betas]),
+                        # The sequence length
+                        "seq_length": features._int64_feature([seq_length])
                     }
                     # Data augmentation: framerate drop
                     for fr_drop in framerate_drop:
