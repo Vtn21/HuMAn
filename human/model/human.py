@@ -166,10 +166,10 @@ class HuMAn(tf.keras.Model):
 
 
 if __name__ == "__main__":
-    inputs = {"pose_input": tf.keras.Input(shape=(None, 72)),
-              "selection_input": tf.keras.Input(shape=(None, 72)),
-              "elapsed_input": tf.keras.Input(shape=(None, 1)),
-              "horizon_input": tf.keras.Input(shape=(None, 1))}
+    inputs = {"pose_input": tf.keras.Input(shape=[None, 72]),
+              "selection_input": tf.keras.Input(shape=[None, 72]),
+              "elapsed_input": tf.keras.Input(shape=[None, 1]),
+              "horizon_input": tf.keras.Input(shape=[None, 1])}
     model = HuMAn()
     model(inputs)
     model.summary()
