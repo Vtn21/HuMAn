@@ -33,7 +33,7 @@ if __name__ == '__main__':
     for split, ds in parsed_ds.items():
         mapped_ds[split] = (ds
                             .repeat(2)
-                            .map(dataset.map_dataset,
+                            .map(dataset.map_train,
                                  num_parallel_calls=tf.data.AUTOTUNE,
                                  deterministic=False)
                             .shuffle(SHUFFLE_BUFFER)
