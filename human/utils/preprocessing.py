@@ -22,8 +22,40 @@ import tensorflow as tf  # noqa: E402
 
 
 def amass_to_tfrecord(input_directory, output_tfrecord, framerate_drop=[1],
-                      seq_length=256, percent_stride=0.25, max_horizon=0.5,
+                      seq_length=256, max_horizon=0.5, percent_stride=0.25, 
                       max_betas=10, tqdm_desc="Dataset (split)", tqdm_pos=0):
+    """Preprocesses and saves a full sub-dataset from AMASS (from .npz files)
+    into a TFRecord file. This function is suitable for multiprocessing.
+
+    Args:
+        input_directory (string): directory of the current sub-dataset. This
+            directory must contain a series of subdirectories (subjects)
+            containing .npz files (recordings).
+        output_tfrecord (string): full path to the output TFRecord file, that
+            will contain the whole sub-dataset. It is recommended to use the
+            .tfrecord extension to help identify the file type.
+        framerate_drop (list, optional): a list of integers to perform data
+            augmentation, by artificially creating recordings with lower
+            framerates. Defaults to [1].
+        seq_length (int, optional): desired sequence length to be used during
+            training (a constant length makes training computationally more
+            efficient). Defaults to 256.
+        max_horizon (float, optional): maximum prediction horizon, in seconds.
+            This number is used in conjunction with "seq_length" to create the
+            complete window size. Defaults to 0.5 (twice the time of human
+            reaction to tactile stimuli).
+        percent_stride (float, optional): percentage of the maximum window size
+            (defined dynamically using "seq_length" and "max_horizon") to
+            define the stride size. Smaller percentages create larger datasets,
+            with the cost of data redundancy. Defaults to 0.25.
+        max_betas (int, optional): maximum number of shape components to be
+            recorded. Defaults to 10.
+        tqdm_desc (str, optional): description string to show in front of the
+            tqdm progress bar. Defaults to "Dataset (split)".
+        tqdm_pos (int, optional): position of the progress bar. It is
+            recommended to increment this parameter in steps of 1 every time a
+            new process is spawned. Defaults to 0.
+    """
     # Path to all input files (.npz) from this sub-dataset
     npz_list = glob.glob(os.path.join(input_directory, "*/*.npz"))
     # Create a TFRecord writer
