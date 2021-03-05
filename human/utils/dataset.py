@@ -18,8 +18,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf  # noqa: E402
 
 
-def load_all_splits(tfr_home, splits=["train", "valid", "test"]):
-    """Load all AMASS splits from TFRecords into tf.data datasets.
+def load_splits(tfr_home, splits=["train", "valid", "test"]):
+    """Load selected AMASS splits from TFRecords into tf.data datasets.
 
     Args:
         tfr_home (string): Path where TFrecord files are stored.
@@ -58,33 +58,38 @@ def map_dataset(data):
     Returns:
         tuple: (dict_inputs, targets)
     """
-    poses, _, dt, _ = decode_record(data)
-    pose_input = poses[:-1]
-    time_input = dt * tf.ones(shape=(tf.shape(pose_input)[0], 1),
-                              dtype=tf.float32)
+    poses, seq_length, _, dt, _ = decode_record(data)
+    pose_input = poses[:seq_length]
+    elapsed_input = dt * tf.ones(shape=[seq_length, 1],
+                                 dtype=tf.float32)
     # Build a random selection vector
-    rand_unif = tf.random.uniform(shape=(1, 72))
-    offset = tf.random.uniform(shape=(), minval=-0.5, maxval=0.5)
-    selection_vec = tf.math.round(rand_unif + offset*tf.ones(shape=(1, 72)))
-    selection_input = tf.tile(selection_vec, [tf.shape(pose_input)[0], 1])
-    pose_target = tf.multiply(poses[1:], selection_input)
+    rand_unif = tf.random.uniform(shape=[1, 72])
+    offset = tf.random.uniform(shape=[], minval=-0.5, maxval=0.5)
+    selection_vec = tf.math.round(rand_unif + offset*tf.ones(shape=[1, 72]))
+    selection_input = tf.tile(selection_vec, [seq_length, 1])
+    # Create a pose target with a random time horizon
+    shift = tf.random.uniform(shape=[], dtype=tf.int64, minval=0,
+                              maxval=poses.shape[0]-seq_length)
+    horizon_input = shift*dt
+    pose_target = tf.multiply(poses[shift:seq_length+shift], selection_input)
     inputs = {"pose_input": pose_input,
               "selection_input": selection_input,
-              "time_input": time_input}
+              "elapsed_input": elapsed_input,
+              "horizon_input": horizon_input}
     return inputs, pose_target
 
 
-def map_test(data):
-    poses, betas, dt, gender = decode_record(data)
-    pose_input = poses[:-1]
-    time_input = dt * tf.ones(shape=(tf.shape(pose_input)[0], 1),
-                              dtype=tf.float32)
-    selection_input = tf.ones(shape=tf.shape(pose_input))
-    inputs = {"pose_input": pose_input,
-              "selection_input": selection_input,
-              "time_input": time_input}
-    aux = {"betas": betas, "dt": dt, "gender": gender}
-    return inputs, aux
+# def map_test(data):
+#     poses, betas, dt, gender = decode_record(data)
+#     pose_input = poses[:-1]
+#     time_input = dt * tf.ones(shape=(tf.shape(pose_input)[0], 1),
+#                               dtype=tf.float32)
+#     selection_input = tf.ones(shape=tf.shape(pose_input))
+#     inputs = {"pose_input": pose_input,
+#               "selection_input": selection_input,
+#               "time_input": time_input}
+#     aux = {"betas": betas, "dt": dt, "gender": gender}
+#     return inputs, aux
 
 
 def map_pose_input(data):
@@ -97,6 +102,6 @@ def map_pose_input(data):
     Returns:
         pose_input: the input poses.
     """
-    poses, _, _, _ = decode_record(data)
-    pose_input = poses[:-1]
+    poses, seq_length, _, _, _ = decode_record(data)
+    pose_input = poses[:seq_length]
     return pose_input
