@@ -23,6 +23,7 @@ def parse_record(record):
     """
     feature_names = {
         "poses": tf.io.VarLenFeature(tf.float32),
+        "seq_length": tf.io.FixedLenFeature([], tf.int64),
         "betas": tf.io.VarLenFeature(tf.float32),
         "dt": tf.io.FixedLenFeature([], tf.float32),
         "gender": tf.io.FixedLenFeature([], tf.int64)
@@ -40,11 +41,13 @@ def decode_record(parsed_record):
 
     Returns:
         poses (tensor): N x 72 tensor with the sequence of poses.
+        seq_length (tensor): int tensor with the configured sequence length.
         betas (tensor): 1D tensor with all shape primitives.
         dt (tensor): float tensor with the time step for this sequence.
         gender (string): gender of the subject.
     """
     poses = tf.reshape(tf.sparse.to_dense(parsed_record["poses"]), [-1, 72])
+    seq_length = parsed_record["seq_length"]
     betas = tf.reshape(tf.sparse.to_dense(parsed_record["betas"]), [1, -1])
     dt = parsed_record["dt"]
     if parsed_record["gender"] == 1:
@@ -53,4 +56,4 @@ def decode_record(parsed_record):
         gender = "male"
     else:
         gender = "neutral"
-    return poses, betas, dt, gender
+    return poses, seq_length, betas, dt, gender
