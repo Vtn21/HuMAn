@@ -27,11 +27,12 @@ if __name__ == '__main__':
     # Path where the TFRecords are located
     tfr_home = "../../AMASS/tfrecords"
     # Load the TFRecords into datasets
-    parsed_ds = dataset.load_all_splits(tfr_home)
+    parsed_ds = dataset.load_splits(tfr_home, splits=["train", "valid"])
     # Create mapped datasets
     mapped_ds = {}
     for split, ds in parsed_ds.items():
         mapped_ds[split] = (ds
+                            .repeat(2)
                             .map(dataset.map_dataset,
                                  num_parallel_calls=tf.data.AUTOTUNE,
                                  deterministic=False)
@@ -49,7 +50,7 @@ if __name__ == '__main__':
     model = HuMAn(norm_dataset=norm_ds)
     # Create a decaying learning rate
     lr_schedule = optimizers.schedules.ExponentialDecay(
-        1e-3, decay_steps=1e5, decay_rate=0.96, staircase=True)
+        1e-3, decay_steps=1e4, decay_rate=0.96, staircase=True)
     # Compile the model
     model.compile(loss=tf.losses.MeanSquaredError(),
                   optimizer=optimizers.Adam(learning_rate=lr_schedule),
