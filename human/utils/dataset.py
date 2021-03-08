@@ -119,7 +119,7 @@ def map_test(data):
     Returns:
         tuple: (dict_inputs, targets, dict_aux)
     """
-    return map_dataset(data, train=True)
+    return map_dataset(data, test=True)
 
 
 def map_pose_input(data):
