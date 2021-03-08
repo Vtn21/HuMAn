@@ -15,10 +15,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf  # noqa: E402
 from tensorflow.keras import layers  # noqa: E402
 from tensorflow.keras.layers.experimental import preprocessing  # noqa: E402
-from tensorflow.keras.regularizers import L2  # noqa: E402
 
 
-L2_PENALTY = 0.001
 NPZ_PATH = os.path.join(pathlib.Path(__file__).parent.absolute(),
                         "normalization.npz")
 
@@ -32,16 +30,13 @@ class JointPredictionLayer(tf.keras.layers.Layer):
         super().__init__()
         self.concatenate = layers.Concatenate(axis=2, name=f"{name}_concat")
         self.dense0 = layers.Dense(units[0], activation="tanh",
-                                   name=f"{name}_dense0",
-                                   kernel_regularizer=L2(L2_PENALTY))
+                                   name=f"{name}_dense0")
         self.dropout0 = layers.Dropout(rate, name=f"{name}_dropout0")
         self.dense1 = layers.Dense(units[1], activation="tanh",
-                                   name=f"{name}_dense1",
-                                   kernel_regularizer=L2(L2_PENALTY))
+                                   name=f"{name}_dense1")
         self.dropout1 = layers.Dropout(rate, name=f"{name}_dropout1")
         self.dense2 = layers.Dense(units[2], activation="tanh",
-                                   name=f"{name}_dense2",
-                                   kernel_regularizer=L2(L2_PENALTY))
+                                   name=f"{name}_dense2")
         self.dropout2 = layers.Dropout(rate, name=f"{name}_dropout2")
         self.linear = layers.Dense(3, name=f"{name}_linear")
         self.multiply = layers.Multiply(name=f"{name}_multiply")
@@ -122,8 +117,7 @@ class HuMAn(tf.keras.Model):
         self.dropout_input = layers.Dropout(rate[0], name="dropout")
         self.concat_inputs = layers.Concatenate(axis=2, name="concat_inputs")
         self.lstm = layers.LSTM(lstm_units, return_sequences=True,
-                                return_state=True, name="lstm",
-                                kernel_regularizer=L2(L2_PENALTY))
+                                return_state=True, name="lstm")
         self.dropout_lstm = layers.Dropout(rate[1], name="dropout_lstm")
         # Prediction layers
         self.pred = []
