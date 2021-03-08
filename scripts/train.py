@@ -9,6 +9,7 @@ Author: Victor T. N.
 
 
 import os
+import re
 import time
 from human.model.human import HuMAn
 from human.utils import dataset
@@ -48,23 +49,33 @@ if __name__ == '__main__':
                .prefetch(tf.data.AUTOTUNE))
     # The HuMAn neural network
     model = HuMAn(norm_dataset=norm_ds)
+    # Load weights from checkpoints, if appropriate
+    ckpt_path = "checkpoints"
+    latest_ckpt = tf.train.latest_checkpoint(ckpt_path)
+    restore = 0
+    if latest_ckpt is not None:
+        print("Restoring model from " + latest_ckpt)
+        restore = int(re.sub("[^0-9]", "", latest_ckpt))
+        model.load_weights(latest_ckpt)
     # Create a decaying learning rate
     lr_schedule = optimizers.schedules.ExponentialDecay(
-        1e-3, decay_steps=1e4, decay_rate=0.96, staircase=True)
+        1e-5, decay_steps=1e4, decay_rate=0.96, staircase=True)
     # Compile the model
     model.compile(loss=tf.losses.MeanSquaredError(),
                   optimizer=optimizers.Adam(learning_rate=lr_schedule),
-                  metrics=[tf.metrics.MeanAbsoluteError()])
+                  metrics=[tf.metrics.MeanSquaredError(),
+                           tf.metrics.MeanAbsoluteError()])
     # Create a checkpoint callback
-    ckpt_path = "checkpoints/ckpt_{epoch}"
-    checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_path,
-                                                    save_weights_only=True)
+    ckpt_name = ckpt_path + f"/ckpt_{restore}" + "_{epoch}"
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=ckpt_name,
+                                                    save_weights_only=True,
+                                                    save_best_only=True)
     # Create a TensorBoard callback
     tensorboard = tf.keras.callbacks.TensorBoard(
         log_dir=f"logs/{int(time.time())}", update_freq=100,
         profile_batch=(100, 500))
     # Create an early stopping callback (based on validation loss)
-    early_stop = tf.keras.callbacks.EarlyStopping(patience=2)
+    early_stop = tf.keras.callbacks.EarlyStopping(patience=3)
     # Train the model
     model.fit(x=mapped_ds["train"], epochs=20,
               callbacks=[checkpoint, tensorboard, early_stop],
