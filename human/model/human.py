@@ -64,7 +64,7 @@ class JointPredictionLayer(tf.keras.layers.Layer):
         x = self.dense2(x, training=training)
         x = self.dropout2(x, training=training)
         x = self.linear(x, training=training)
-        return self.multiply([selection_input, x])
+        return self.multiply([selection_input, x])*horizon_input
 
 
 class HuMAn(tf.keras.Model):
