@@ -59,7 +59,7 @@ if __name__ == '__main__':
         model.load_weights(latest_ckpt)
     # Create a decaying learning rate
     lr_schedule = optimizers.schedules.ExponentialDecay(
-        1e-5, decay_steps=1e4, decay_rate=0.96, staircase=True)
+        1e-3, decay_steps=1e4, decay_rate=0.96, staircase=True)
     # Compile the model
     model.compile(loss=tf.losses.MeanSquaredError(),
                   optimizer=optimizers.Adam(learning_rate=lr_schedule),
