@@ -16,6 +16,7 @@ from human.utils.preprocessing import amass_to_tfrecord
 
 # Use the following framerate drop rates to augment data
 FRAMERATE_DROP = [1, 2, 4, 5]
+SEQ_LENGTH = 1024
 
 
 if __name__ == "__main__":
@@ -36,7 +37,7 @@ if __name__ == "__main__":
     # Iterate over all splits, to create subdirectories if needed
     for split in amass_splits.keys():
         # Path for the corresponding subdirectory
-        tfr_subdir = os.path.join(tfr_home, split)
+        tfr_subdir = os.path.join(tfr_home, split + f"_{SEQ_LENGTH}")
         # Create the subdirectory, if it doesn't exist
         try:
             os.mkdir(tfr_subdir)
@@ -57,8 +58,8 @@ if __name__ == "__main__":
                 # Create the input path
                 input_directory = os.path.join(amass_home, sub_ds)
                 # Create the output path
-                output_tfrecord = os.path.join(tfr_home, split,
-                                               sub_ds + ".tfrecord")
+                output_tfrecord = os.path.join(
+                    tfr_home, split + f"_{SEQ_LENGTH}", sub_ds + ".tfrecord")
                 # Create a description string
                 tqdm_desc = sub_ds + " (" + split + ")"
                 # Start the process
@@ -66,6 +67,7 @@ if __name__ == "__main__":
                                 input_directory=input_directory,
                                 output_tfrecord=output_tfrecord,
                                 framerate_drop=FRAMERATE_DROP,
+                                seq_length=SEQ_LENGTH,
                                 tqdm_desc=tqdm_desc, tqdm_pos=tqdm_pos)
                 # Increment position counter
                 tqdm_pos += 1
