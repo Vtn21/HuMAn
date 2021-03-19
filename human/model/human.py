@@ -28,7 +28,7 @@ class JointPredictionLayer(tf.keras.layers.Layer):
 
     def __init__(self, units=[64, 32, 32], rate=0.2, name="joint"):
         super().__init__()
-        self.concatenate = layers.Concatenate(axis=2, name=f"{name}_concat")
+        self.concat = layers.Concatenate(axis=2, name=f"{name}_concat")
         self.dense0 = layers.Dense(units[0], activation="tanh",
                                    name=f"{name}_dense0")
         self.dropout0 = layers.Dropout(rate, name=f"{name}_dropout0")
@@ -36,13 +36,13 @@ class JointPredictionLayer(tf.keras.layers.Layer):
                                    name=f"{name}_dense1")
         self.dropout1 = layers.Dropout(rate, name=f"{name}_dropout1")
         self.dense2 = layers.Dense(units[2], activation="tanh",
-                                   name=f"{name}_dense2")
-        self.dropout2 = layers.Dropout(rate, name=f"{name}_dropout2")
+                                   name=f"{name}_dense1")
+        self.dropout2 = layers.Dropout(rate, name=f"{name}_dropout1")
         self.linear = layers.Dense(3, name=f"{name}_linear")
         self.multiply = layers.Multiply(name=f"{name}_multiply")
 
-    def call(self, selection_input, elapsed_input, horizon_input, lstm_dropout,
-             parent_preds=[], training=False):
+    def call(self, selection_input, elapsed_input, horizon_input,
+             lstm_dropout, parent_preds=[], training=False):
         """Forward pass of the sub-network.
 
         Args:
@@ -55,8 +55,8 @@ class JointPredictionLayer(tf.keras.layers.Layer):
         Returns:
             (1x3 tensor): displacement prediction for this specific joint.
         """
-        x = self.concatenate([elapsed_input, horizon_input, lstm_dropout] +
-                             parent_preds)
+        x = self.concat([elapsed_input, horizon_input,
+                         lstm_dropout] + parent_preds)
         x = self.dense0(x, training=training)
         x = self.dropout0(x, training=training)
         x = self.dense1(x, training=training)
@@ -69,7 +69,7 @@ class JointPredictionLayer(tf.keras.layers.Layer):
 
 class HuMAn(tf.keras.Model):
     def __init__(self, norm_dataset=None, norm_npz=NPZ_PATH,
-                 lstm_units=1024, rate=[0.1, 0.2]):
+                 lstm_units=1024, rate=0.2):
         super().__init__()
         # Kinematic tree
         self.joints = ["root", "hipL", "hipR", "spine3", "kneeL", "kneeR",
@@ -114,11 +114,10 @@ class HuMAn(tf.keras.Model):
                     axis=2, mean=mean, variance=variance, name="normalization")
         # Initial layers
         self.pose_select = layers.Multiply(name="pose_select")
-        self.dropout_input = layers.Dropout(rate[0], name="dropout")
         self.concat_inputs = layers.Concatenate(axis=2, name="concat_inputs")
         self.lstm = layers.LSTM(lstm_units, return_sequences=True,
                                 return_state=True, name="lstm")
-        self.dropout_lstm = layers.Dropout(rate[1], name="dropout_lstm")
+        self.dropout = layers.Dropout(rate, name="dropout")
         # Prediction layers
         self.pred = []
         for name in self.joints:
@@ -127,25 +126,25 @@ class HuMAn(tf.keras.Model):
         self.concat_deltas = layers.Concatenate(axis=2, name="concat_deltas")
         self.add = layers.Add()
 
-    def call(self, inputs, state=None, return_state=False, training=False):
+    def call(self, inputs, state=None, return_states=False,
+             training=False):
         # Parsing inputs
         pose_input = inputs["pose_input"]
         selection_input = inputs["selection_input"]
         elapsed_input = inputs["elapsed_input"]
         horizon_input = inputs["horizon_input"]
         # Forward pass
-        x = self.normalization(pose_input)
-        x = self.pose_select([x, selection_input])
-        x = self.dropout_input(x, training=training)
+        pose_norm = self.normalization(pose_input)
+        x = self.pose_select([pose_norm, selection_input])
         x = self.concat_inputs([x, elapsed_input])
         # LSTM layer
         x, *state = self.lstm(x, initial_state=state, training=training)
-        x = self.dropout_lstm(x, training=training)
+        x = self.dropout(x, training=training)
         # Prediction layers
         delta = []
         for i, parent in enumerate(self.parent):
-            delta.append(self.pred[i](tf.gather(selection_input,
-                                                [3*i, 3*i+1, 3*i+2], axis=2),
+            idx = [3*i, 3*i+1, 3*i+2]
+            delta.append(self.pred[i](tf.gather(selection_input, idx, axis=2),
                                       elapsed_input, horizon_input, x,
                                       [delta[p] for p in parent],
                                       training=training))
@@ -153,7 +152,7 @@ class HuMAn(tf.keras.Model):
         preds = self.add([self.pose_select([pose_input, selection_input]),
                           self.concat_deltas(delta)])
         # Return
-        if return_state:
+        if return_states:
             return preds, state
         else:
             return preds
