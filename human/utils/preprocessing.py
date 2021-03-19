@@ -22,8 +22,40 @@ import tensorflow as tf  # noqa: E402
 
 
 def amass_to_tfrecord(input_directory, output_tfrecord, framerate_drop=[1],
-                      window_size=256, window_stride=64, max_betas=10,
-                      tqdm_desc="Dataset (split)", tqdm_pos=0):
+                      seq_length=256, max_horizon=0.5, percent_stride=0.25,
+                      max_betas=10, tqdm_desc="Dataset (split)", tqdm_pos=0):
+    """Preprocesses and saves a full sub-dataset from AMASS (from .npz files)
+    into a TFRecord file. This function is suitable for multiprocessing.
+
+    Args:
+        input_directory (string): directory of the current sub-dataset. This
+            directory must contain a series of subdirectories (subjects)
+            containing .npz files (recordings).
+        output_tfrecord (string): full path to the output TFRecord file, that
+            will contain the whole sub-dataset. It is recommended to use the
+            .tfrecord extension to help identify the file type.
+        framerate_drop (list, optional): a list of integers to perform data
+            augmentation, by artificially creating recordings with lower
+            framerates. Defaults to [1].
+        seq_length (int, optional): desired sequence length to be used during
+            training (a constant length makes training computationally more
+            efficient). Defaults to 256.
+        max_horizon (float, optional): maximum prediction horizon, in seconds.
+            This number is used in conjunction with "seq_length" to create the
+            complete window size. Defaults to 0.5 (twice the time of human
+            reaction to tactile stimuli).
+        percent_stride (float, optional): percentage of the maximum window size
+            (defined dynamically using "seq_length" and "max_horizon") to
+            define the stride size. Smaller percentages create larger datasets,
+            with the cost of data redundancy. Defaults to 0.25.
+        max_betas (int, optional): maximum number of shape components to be
+            recorded. Defaults to 10.
+        tqdm_desc (str, optional): description string to show in front of the
+            tqdm progress bar. Defaults to "Dataset (split)".
+        tqdm_pos (int, optional): position of the progress bar. It is
+            recommended to increment this parameter in steps of 1 every time a
+            new process is spawned. Defaults to 0.
+    """
     # Path to all input files (.npz) from this sub-dataset
     npz_list = glob.glob(os.path.join(input_directory, "*/*.npz"))
     # Create a TFRecord writer
@@ -71,18 +103,26 @@ def amass_to_tfrecord(input_directory, output_tfrecord, framerate_drop=[1],
                         "gender": features._int64_feature([gender_int]),
                         # Shape components (betas)
                         "betas": features._float_feature(
-                            body_data["betas"][:num_betas])
+                            body_data["betas"][:num_betas]),
+                        # The sequence length
+                        "seq_length": features._int64_feature([seq_length])
                     }
                     # Data augmentation: framerate drop
                     for fr_drop in framerate_drop:
                         # Fill the "dt" field in the feature dict
-                        feature["dt"] = features._float_feature(
-                            [fr_drop/body_data["mocap_framerate"]])
+                        dt = fr_drop/body_data["mocap_framerate"]
+                        feature["dt"] = features._float_feature([dt])
                         # Keep only 24 first joints (72 angles), which discards
                         # hands and follows the STAR model definition, while
                         # also skipping frames to simulate a lower framerate
                         poses = body_data["poses"][::fr_drop, :72]
-                        # Discard recordings shorter that the window size
+                        # Calculate the actual window size, composed by a fixed
+                        # number of frames defined by seq_length and a variable
+                        # extra length to enable multiple prediction horizons
+                        window_size = int(seq_length + max_horizon/dt)
+                        # Define a stride for this specific window size
+                        window_stride = int(window_size*percent_stride)
+                        # Discard recordings shorter than the window size
                         if poses.shape[0] < window_size:
                             continue
                         else:

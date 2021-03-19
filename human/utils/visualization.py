@@ -98,7 +98,7 @@ def view_test(path_star="star",
               resolution=(800, 600)):
     # Fixed translation tensors
     trans_prediction = tf.constant([[0, 0, 0]], dtype=tf.float32)
-    trans_ground_truth = tf.constant([[0, 0, 0]], dtype=tf.float32)
+    trans_ground_truth = tf.constant([[2, 0, 0]], dtype=tf.float32)
     # Path to the STAR model
     path_model = os.path.join(path_star, str(gender) + ".npz")
     # Create STAR model
