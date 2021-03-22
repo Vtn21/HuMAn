@@ -12,7 +12,6 @@ Author: Victor T. N.
 """
 
 
-import glob
 import numpy as np
 import os
 import tqdm
@@ -21,16 +20,15 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf  # noqa: E402
 
 
-def amass_to_tfrecord(input_directory, output_tfrecord, framerate_drop=[1],
+def amass_to_tfrecord(input_npz_list, output_tfrecord, framerate_drop=[1],
                       seq_length=256, max_horizon=0.5, percent_stride=0.25,
-                      max_betas=10, tqdm_desc="Dataset (split)", tqdm_pos=0):
+                      max_betas=10, tqdm_desc="", tqdm_pos=0):
     """Preprocesses and saves a full sub-dataset from AMASS (from .npz files)
     into a TFRecord file. This function is suitable for multiprocessing.
 
     Args:
-        input_directory (string): directory of the current sub-dataset. This
-            directory must contain a series of subdirectories (subjects)
-            containing .npz files (recordings).
+        input_npz_list (list): list of all .npz files (path strings) to be
+            included in the output TFRecord file.
         output_tfrecord (string): full path to the output TFRecord file, that
             will contain the whole sub-dataset. It is recommended to use the
             .tfrecord extension to help identify the file type.
@@ -51,17 +49,15 @@ def amass_to_tfrecord(input_directory, output_tfrecord, framerate_drop=[1],
         max_betas (int, optional): maximum number of shape components to be
             recorded. Defaults to 10.
         tqdm_desc (str, optional): description string to show in front of the
-            tqdm progress bar. Defaults to "Dataset (split)".
+            tqdm progress bar. Defaults to "" (empty string).
         tqdm_pos (int, optional): position of the progress bar. It is
             recommended to increment this parameter in steps of 1 every time a
             new process is spawned. Defaults to 0.
     """
-    # Path to all input files (.npz) from this sub-dataset
-    npz_list = glob.glob(os.path.join(input_directory, "*/*.npz"))
     # Create a TFRecord writer
     with tf.io.TFRecordWriter(output_tfrecord) as writer:
         # Iterate over all input files
-        for npz_file in tqdm.tqdm(npz_list, total=len(npz_list),
+        for npz_file in tqdm.tqdm(input_npz_list, total=len(input_npz_list),
                                   desc=tqdm_desc, position=tqdm_pos,
                                   dynamic_ncols=True, mininterval=0.5):
             # Try to load the .npz file
