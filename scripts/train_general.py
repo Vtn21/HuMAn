@@ -19,9 +19,9 @@ import tensorflow_addons as tfa  # noqa: E402
 from tensorflow.keras import optimizers  # noqa: E402
 
 
-LENGTH_BATCH = {256: [4, 8, 16, 32],
-                512: [4, 8, 16],
-                1024: [4, 8]}
+LENGTH_BATCH = {256: [8, 16, 32],
+                512: [8, 16],
+                1024: [8]}
 SHUFFLE_BUFFER = 1000
 
 
@@ -67,13 +67,13 @@ if __name__ == "__main__":
             checkpoint = tf.keras.callbacks.ModelCheckpoint(
                 filepath=filepath, save_best_only=True, save_weights_only=True)
             # Early stopping
-            early_stop = tf.keras.callbacks.EarlyStopping(patience=3)
+            early_stop = tf.keras.callbacks.EarlyStopping(patience=1)
             # TensorBoard
             log_dir = f"logs/{stamp}"
-            tensorboard = tf.keras.callbacks.TensorBoard(
-                log_dir=log_dir, update_freq=100, profile_batch=0)
+            tensorboard = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
+                                                         profile_batch=0)
             # Reduce learning rate on plateau
-            rlrp = tf.keras.callbacks.ReduceLROnPlateau(factor=0.2, patience=1)
+            rlrp = tf.keras.callbacks.ReduceLROnPlateau(factor=0.2, patience=0)
             # Select callbacks
             callbacks = [checkpoint, early_stop, tensorboard]
             if i == len(LENGTH_BATCH[seq_len]):
@@ -84,9 +84,6 @@ if __name__ == "__main__":
                   f"and batch size {batch_size}")
             model.fit(x=mapped_ds["train"], epochs=20, callbacks=callbacks,
                       validation_data=mapped_ds["valid"])
-            # Clear session, to allow training on the next loop
-            print("Clearing session...")
-            tf.keras.backend.clear_session()
     # Run a final training, with Stochastic Weight Averaging (SWA)
     swa_ds = {}
     seq_len = 256
@@ -111,22 +108,19 @@ if __name__ == "__main__":
         update_weights=True, filepath=filepath, save_best_only=True,
         save_weights_only=True)
     # Early stopping
-    early_stop = tf.keras.callbacks.EarlyStopping(patience=3)
+    early_stop = tf.keras.callbacks.EarlyStopping(patience=1)
     # TensorBoard
     log_dir = f"logs/{stamp}"
-    tensorboard = tf.keras.callbacks.TensorBoard(
-        log_dir=log_dir, update_freq=100, profile_batch=0)
+    tensorboard = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
+                                                 profile_batch=0)
     # Reduce learning rate on plateau
-    rlrp = tf.keras.callbacks.ReduceLROnPlateau(factor=0.2, patience=1)
+    rlrp = tf.keras.callbacks.ReduceLROnPlateau(factor=0.2, patience=0)
     # Select callbacks
     callbacks = [checkpoint, early_stop, tensorboard, rlrp]
     # Train the model
     print("Training the model with Stochastic Weight Averaging (SWA)")
     model.fit(x=mapped_ds["train"], epochs=20, callbacks=callbacks,
               validation_data=mapped_ds["valid"])
-    # Clear session, to allow training on the next loop
-    print("Clearing session...")
-    tf.keras.backend.clear_session()
     # Save the final model
     date = datetime.today().strftime("%Y-%m-%d-%H-%M")
     stamp = f"{date}_train"
