@@ -23,7 +23,7 @@ import tensorflow as tf  # noqa: E402
 def amass_to_tfrecord(input_npz_list, output_tfrecord, framerate_drop=[1],
                       seq_length=256, max_horizon=0.5, percent_stride=0.25,
                       max_betas=10, tqdm_desc="", tqdm_pos=0):
-    """Preprocesses and saves a full sub-dataset from AMASS (from .npz files)
+    """Preprocesses and saves a set of AMASS recordings (from .npz files)
     into a TFRecord file. This function is suitable for multiprocessing.
 
     Args:
