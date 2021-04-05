@@ -32,7 +32,6 @@ def load_splits(tfr_home, splits=["train", "valid", "test"]):
                               for each split. Dictionary keys are the same as
                               split names.
     """
-    raw_ds = {}
     parsed_ds = {}
     # Iterate through all splits
     for split in splits:
@@ -41,10 +40,10 @@ def load_splits(tfr_home, splits=["train", "valid", "test"]):
         # Expand with glob
         tfr_list = glob.glob(tfr_paths)
         # Load the TFRecords as a Dataset
-        raw_ds[split] = tf.data.TFRecordDataset(
+        raw_ds = tf.data.TFRecordDataset(
             tfr_list, num_parallel_reads=tf.data.AUTOTUNE)
         # Parse the dataset
-        parsed_ds[split] = raw_ds[split].map(parse_record)
+        parsed_ds[split] = raw_ds.map(parse_record)
     return parsed_ds
 
 

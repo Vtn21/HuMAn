@@ -14,7 +14,9 @@ import pathlib
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf  # noqa: E402
 from tensorflow.keras import layers  # noqa: E402
+from tensorflow.keras.initializers import Constant  # noqa: E402
 from tensorflow.keras.layers.experimental import preprocessing  # noqa: E402
+from tensorflow_addons.activations import mish  # noqa: E402
 
 
 NPZ_PATH = os.path.join(pathlib.Path(__file__).parent.absolute(),
@@ -26,18 +28,19 @@ class JointPredictionLayer(tf.keras.layers.Layer):
     a single joint (3-DoF).
     """
 
-    def __init__(self, units=[64, 32, 32], rate=0.2, name="joint"):
+    def __init__(self, units=[128, 64], rate=0.2, name="joint"):
         super().__init__()
         self.concat = layers.Concatenate(axis=2, name=f"{name}_concat")
-        self.dense0 = layers.Dense(units[0], activation="tanh",
+        self.dense0 = layers.Dense(units[0], activation=mish,
+                                   kernel_initializer="he_uniform",
+                                   bias_initializer=Constant(0.1),
                                    name=f"{name}_dense0")
         self.dropout0 = layers.Dropout(rate, name=f"{name}_dropout0")
-        self.dense1 = layers.Dense(units[1], activation="tanh",
+        self.dense1 = layers.Dense(units[1], activation=mish,
+                                   kernel_initializer="he_uniform",
+                                   bias_initializer=Constant(0.1),
                                    name=f"{name}_dense1")
         self.dropout1 = layers.Dropout(rate, name=f"{name}_dropout1")
-        self.dense2 = layers.Dense(units[2], activation="tanh",
-                                   name=f"{name}_dense1")
-        self.dropout2 = layers.Dropout(rate, name=f"{name}_dropout1")
         self.linear = layers.Dense(3, name=f"{name}_linear")
         self.multiply = layers.Multiply(name=f"{name}_multiply")
 
@@ -61,8 +64,6 @@ class JointPredictionLayer(tf.keras.layers.Layer):
         x = self.dropout0(x, training=training)
         x = self.dense1(x, training=training)
         x = self.dropout1(x, training=training)
-        x = self.dense2(x, training=training)
-        x = self.dropout2(x, training=training)
         x = self.linear(x, training=training)
         return self.multiply([selection_input, x])*horizon_input
 
@@ -97,7 +98,7 @@ class HuMAn(tf.keras.Model):
                 print("Falling back to provided dataset.")
                 self.normalization = preprocessing.Normalization(
                     axis=2, name="normalization")
-                print("Adapting layer...")
+                print("Adapting normalization layer...")
                 self.normalization.adapt(norm_dataset)
                 # Save mean and variance for later usage
                 print(f"Done! Saving mean and variance to {norm_npz}")
