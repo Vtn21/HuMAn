@@ -3,5 +3,4 @@ __pycache__/
 human/model/model.png
 human/model/*.npz
 human.egg-info
-scripts/checkpoints
-scripts/logs
+training/*/
