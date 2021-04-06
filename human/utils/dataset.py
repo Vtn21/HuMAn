@@ -18,33 +18,37 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf  # noqa: E402
 
 
-def load_splits(tfr_home, splits=["train", "valid", "test"]):
-    """Load selected AMASS splits from TFRecords into tf.data datasets.
+def folder_to_dataset(folder_path="."):
+    """Load all TFRecord files inside a folder into a single dataset.
 
     Args:
-        tfr_home (string): Path where TFrecord files are stored.
-        splits (list, optional): AMASS splits. Must be the same names as the
-                                 subdirectories of "tfr_home".
-                                 Defaults to ["train", "valid", "test"].
+        folder_path (string): path to the folder.
 
     Returns:
-        tf.data.Dataset dict: A dataset dictionary, containing a parsed dataset
-                              for each split. Dictionary keys are the same as
-                              split names.
+        tf.data.Dataset: a parsed dataset containing all the data from the
+                         TFRecord files inside the input folder.
     """
-    parsed_ds = {}
-    # Iterate through all splits
-    for split in splits:
-        # Full path to the datasets of a specific split, with wildcards
-        tfr_paths = os.path.join(tfr_home, split, "*.tfrecord")
-        # Expand with glob
-        tfr_list = glob.glob(tfr_paths)
-        # Load the TFRecords as a Dataset
-        raw_ds = tf.data.TFRecordDataset(
-            tfr_list, num_parallel_reads=tf.data.AUTOTUNE)
-        # Parse the dataset
-        parsed_ds[split] = raw_ds.map(parse_record)
-    return parsed_ds
+    # List all TFRecords inside that folder using glob
+    tfr_paths = os.path.join(folder_path, "*.tfrecord")
+    tfr_list = glob.glob(tfr_paths)
+    return tfrecords_to_dataset(tfr_list)
+
+
+def tfrecords_to_dataset(tfr_list=[]):
+    """Load a set of TFRecords into a tf.data dataset.
+
+    Args:
+        tfr_list (list): list of paths to TFRecords files.
+
+    Returns:
+        tf.data.Dataset: a parsed dataset containing all the data from the
+                         input TFRecord files.
+    """
+    # Load all TFrecords as a Dataset
+    raw_ds = tf.data.TFRecordDataset(
+        tfr_list, num_parallel_reads=tf.data.AUTOTUNE)
+    # Parse and return the Dataset
+    return raw_ds.map(parse_record)
 
 
 def map_dataset(data, test=False):
