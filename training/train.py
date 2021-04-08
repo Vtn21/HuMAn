@@ -186,7 +186,3 @@ if __name__ == "__main__":
                                        ckpt_dir=common.ckpt_dir,
                                        log_dir=common.log_dir,
                                        save_dir=common.save_dir)
-
-
-
-
