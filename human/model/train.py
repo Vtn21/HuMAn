@@ -19,6 +19,38 @@ def full_training_loop(model, train_datasets=[], valid_datasets=[],
                        seq_lengths=[], batch_sizes=[], swa=[], rlrp=[],
                        patience=[], name="noname", ckpt_dir="checkpoints",
                        log_dir="logs", save_dir="saves"):
+    """Run a full training loop, controlled by the list inputs, all of which
+    must have the same length.
+
+    Args:
+        model (tf.keras.Model): uncompiled model to be trained.
+        train_datasets (list): List of parsed training datasets.
+                               Defaults to [].
+        valid_datasets (list): List of parsed validation datasets.
+                               Defaults to [].
+        seq_lengths (list): List of sequence lengths (the length of the
+                            recording). These are generated with preprocessing.
+                            Defaults to [].
+        batch_sizes (list): List of batch sizes, used on both training and
+                            validation datasets.
+                            Defaults to [].
+        swa (list): whether to use SGD with Stochastic Weight Averaging
+                    (1 or True) or Adam (0 or False).
+                    Defaults to [].
+        rlrp (list): whether to reduce learning rate on validation loss plateau
+                     (1 or True) or not use it (0 or False).
+                     Defaults to [].
+        patience (list): number of epochs without validation loss improvement
+                         before early stopping the training.
+                         Defaults to [].
+        name (str): name of this training loop. Defaults to "noname".
+        ckpt_dir (str): directory to store checkpoints.
+                        Defaults to "checkpoints".
+        log_dir (str): directory to store TensorBoard logs.
+                       Defaults to "logs".
+        save_dir (str): directory to save the final trained model.
+                        Defaults to "saves".
+    """
     for i in range(len(train_datasets)):
         # Retrieve current date and time
         date = datetime.today().strftime("%Y-%m-%d-%H-%M")
