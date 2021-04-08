@@ -6,9 +6,13 @@ Author: Victor T. N.
 
 import os
 from datetime import datetime
+from human.utils import dataset
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf  # noqa: E402
 import tensorflow_addons as tfa  # noqa: E402
+
+
+SHUFFLE_BUFFER = 1000
 
 
 def full_training_loop(model, train_datasets=[], valid_datasets=[],
@@ -58,8 +62,23 @@ def full_training_loop(model, train_datasets=[], valid_datasets=[],
             print("Optimizer: SGD + SWA")
         else:
             print("Optimizer: Adam")
+        # Map and batch the dataset
+        train_mapped = (train_datasets[i]
+                        .map(dataset.map_train,
+                             num_parallel_calls=tf.data.AUTOTUNE,
+                             deterministic=False)
+                        .shuffle(SHUFFLE_BUFFER)
+                        .batch(batch_sizes[i])
+                        .prefetch(tf.data.AUTOTUNE))
+        valid_mapped = (valid_datasets[i]
+                        .map(dataset.map_train,
+                             num_parallel_calls=tf.data.AUTOTUNE,
+                             deterministic=False)
+                        .shuffle(SHUFFLE_BUFFER)
+                        .batch(batch_sizes[i])
+                        .prefetch(tf.data.AUTOTUNE))
         # Start training
-        model.fit(x=train_datasets[i], epochs=20, callbacks=callbacks,
-                  validation_data=valid_datasets[i])
+        model.fit(x=train_mapped, epochs=20, callbacks=callbacks,
+                  validation_data=valid_mapped)
     print(f"Training done for {name}. Saving model...")
     model.save_weights(os.path.join(save_dir, name))
