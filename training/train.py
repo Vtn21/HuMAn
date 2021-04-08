@@ -99,11 +99,26 @@ if __name__ == "__main__":
     # Instantiate the HuMAn neural network
     model = HuMAn(norm_dataset=norm_ds)
     if args.d == "universal":
-        # Try to automatically restore weights from a previous checkpoint
-        # (the universal training is lengthy, this allows resuming it)
-        latest_ckpt = tf.train.latest_checkpoint(common.ckpt_dir)
-        # TODO: finish implementation
-        raise NotImplementedError("This routine is yet to be implemented.")
+        # Create the datasets
+        train_datasets = []
+        valid_datasets = []
+        for seq_len in cfg.seq_len:
+            train_folder = os.path.join(common.tfr_home, f"train_{seq_len}")
+            train_datasets.append(dataset.folder_to_dataset(train_folder))
+            valid_folder = os.path.join(common.tfr_home, f"valid_{seq_len}")
+            valid_datasets.append(dataset.folder_to_dataset(valid_folder))
+            full_training_loop(model,
+                               train_datasets=train_datasets,
+                               valid_datasets=valid_datasets,
+                               seq_lengths=cfg.seq_len,
+                               batch_sizes=cfg.batch_size,
+                               swa=cfg.swa,
+                               rlrp=cfg.rlrp,
+                               patience=cfg.patience,
+                               name=cfg.name,
+                               ckpt_dir=common.ckpt_dir,
+                               log_dir=common.log_dir,
+                               save_dir=common.save_dir)
     else:
         if args.p == "transfer":
             # Load the universal model, for transfer learning
