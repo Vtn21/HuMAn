@@ -176,7 +176,7 @@ if __name__ == "__main__":
                     # Create the datasets
                     train_datasets = []
                     valid_datasets = []
-                    for seq_len in range(len(cfg.seq_len)):
+                    for seq_len in cfg.seq_len:
                         # Training
                         tfr_train = os.path.join(
                             common.tfr_home, f"MPI_HDM05_{seq_len}",
