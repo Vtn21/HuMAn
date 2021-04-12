@@ -3,6 +3,10 @@
 Contains tools for visualizing AMASS recordings, directly from .npz files or
 from generated TFRecords.
 
+The recommended way of viewing an AMASS (.npz) recording is by using the
+"view_amass_npz" function, while a TFRecord file (created after preprocessing)
+should be visualized using "view_tfrecord".
+
 Author: Victor T. N.
 """
 
@@ -96,6 +100,7 @@ def view_test(path_star="star",
               color_ground_truth=(0, 255, 65, 200),
               color_background=(255, 255, 255, 255),
               resolution=(800, 600)):
+    """Visualization function for testing, still in progress."""
     # Fixed translation tensors
     trans_prediction = tf.constant([[0, 0, 0]], dtype=tf.float32)
     trans_ground_truth = tf.constant([[2, 0, 0]], dtype=tf.float32)
