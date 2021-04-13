@@ -1,4 +1,9 @@
-"""eval_test.py
+"""eval_universal.py
+
+Evaluates the universal model, with variable skeleton structures, sampling
+rates and prediction horizons. Generates a pickle file, containing mean
+absolute error and standard deviation, for each combination of skeleton
+structure and output joint set.
 
 Author: Victor T. N.
 """
