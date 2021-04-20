@@ -110,11 +110,13 @@ def map_dataset(data, skeleton="random", horizon_frames=-1):
         # Fixed prediction horizon (input-defined)
         shift = horizon_frames
     if horizon_frames > max_shift:
-        # Return "None" as a warning (not enough frames to shift)
+        # Return "horizon_input" filled with zeros as a warning
+        # (not enough frames to shift)
         inputs = {"pose_input": pose_input,
                   "selection_input": selection_input,
                   "elapsed_input": elapsed_input,
-                  "horizon_input": tf.zeros(shape=[], dtype=tf.float32)}
+                  "horizon_input": tf.zeros(shape=tf.shape(elapsed_input),
+                                            dtype=tf.float32)}
         pose_target = pose_input
     else:
         pose_target = tf.multiply(poses[shift:seq_length+shift],
