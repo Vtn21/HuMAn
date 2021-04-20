@@ -1,28 +1,53 @@
 """eval_universal.py
 
-Evaluates the universal model, with variable skeleton structures, sampling
-rates and prediction horizons. Generates a pickle file, containing mean
-absolute error and standard deviation, for each combination of skeleton
-structure and output joint set.
+
 
 Author: Victor T. N.
 """
 
 
+import numpy as np
 import os
-import pickle
 from human.model.human import HuMAn
 from human.utils import dataset
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf  # noqa: E402
 
 
+# This dict configures the number of future frames for each sampling time
+SAMPLING_FRAMES = {0.0833: range(1,   7, 1),
+                   0.0667: range(1,   8, 1),
+                   0.05:   range(1,  11, 1),
+                   0.0417: range(1,  12, 1),
+                   0.04:   range(1,  13, 1),
+                   0.0333: range(1,  16, 1),
+                   0.02:   range(1,  26, 2),
+                   0.0167: range(1,  30, 2),
+                   0.016:  range(1,  32, 2),
+                   0.01:   range(1,  51, 3),
+                   0.0083: range(1,  61, 3),
+                   0.008:  range(1,  63, 3),
+                   0.004:  range(1, 126, 6)}
+# Create lists to store all possible combinations
+SAMPLING_TIME = []
+HORIZON_FRAMES = []
+HORIZON_TIME = []
+# Fill the lists
+for key, value in SAMPLING_FRAMES.items():
+    SAMPLING_TIME.extend([key for _ in value])
+    HORIZON_FRAMES.extend(list(value))
+    HORIZON_TIME.extend([round(val*key, 4) for val in value])
+SAMPLING_TIME = np.array(SAMPLING_TIME, dtype=np.float32)
+HORIZON_TIME = np.array(HORIZON_TIME, dtype=np.float32)
+# Turn HORIZON_FRAMES into a set, removing repeated values
+HORIZON_FRAMES = set(HORIZON_FRAMES)
+
 # "skeleton" dict: keys represent the selected structure when loading the
 # dataset, while values list the body parts where to evaluate the model
-skeleton_dict = {"full_body": ["full_body", "legs_arms", "legs", "arms"],
-                 "legs_arms": ["legs_arms", "legs", "arms"],
-                 "legs": ["legs"],
-                 "arms": ["arms"]}
+SKELETON = {"full_body": ["full_body", "legs_arms", "legs", "arms"],
+            "legs_arms": ["legs_arms", "legs", "arms"],
+            "legs": ["legs"],
+            "arms": ["arms"]}
 
 
 if __name__ == "__main__":
@@ -37,92 +62,88 @@ if __name__ == "__main__":
     # Load weights from saved model
     saves_path = "../training/saves/train_universal"
     model.load_weights(saves_path)
-    # Create a dict to store all absolute error measurements
-    abs_err = {}
-    # Iterate through all selected skeleton structures
-    for skeleton in skeleton_dict.keys():
-        # Start with a single future frame, and increase until total
-        # dataset capacity is reached
-        unable_to_shift = -1
-        total_iterations = 0
-        horizon_frames = 1
-        while unable_to_shift < total_iterations:
-            # Load validation data
-            eval_ds = (parsed_ds
-                       .map(lambda x: dataset.map_dataset(
-                            x, skeleton=skeleton,
-                            horizon_frames=horizon_frames))
-                       .batch(1).prefetch(tf.data.AUTOTUNE))
-            # Create an iterator
-            test_iter = iter(eval_ds)
-            # Iterate through the whole dataset
-            unable_to_shift = 0
-            total_iterations = 0
-            for inputs, pose_target in test_iter:
-                if inputs["horizon_input"].numpy().all() == 0:
-                    # If the dataset is unable to shift the required number of
-                    # frames, it returns the "horizon_input" array filled with
-                    # zeros
-                    unable_to_shift += 1
-                else:
-                    # Successfully shifted the required number of frames
-                    # Extract times
-                    sampling_t = inputs["elapsed_input"].numpy().item(0)
-                    prediction_t = inputs["horizon_input"].numpy().item(0)
-                    # Generate a prediction
-                    prediction = model(inputs)
-                    # Check if this sampling time has already been used
-                    if sampling_t not in abs_err.keys():
-                        # Create this entry
-                        abs_err[sampling_t] = {}
-                    # Check if this prediction time has already been used
-                    if prediction_t not in abs_err[sampling_t].keys():
-                        # Initialize this dict entry
-                        abs_err[sampling_t][prediction_t] = [tf.math.abs(
-                            prediction - pose_target)]
-                    else:
-                        # Append to the list
-                        abs_err[sampling_t][prediction_t].append(
-                            tf.math.abs(prediction - pose_target))
-                # Increment the iterations counter
-                total_iterations += 1
-            # Next iteration will use one more frame as prediction horizon
-            horizon_frames += 1
-        # Compute mean and standard deviation for each combination of
-        # sampling rate and future prediction horizon
-        mean = {}
-        stdev = {}
-        for joints in skeleton_dict[skeleton]:
-            for sampling_t in abs_err.keys():
-                mean[sampling_t] = {}
-                stdev[sampling_t] = {}
-                for prediction_t in abs_err[sampling_t].keys():
-                    # Concatenate all absolute error matrices
-                    concat = tf.concat(abs_err[sampling_t][prediction_t],
-                                       axis=0)
-                    # Remove joints that are not used
-                    if joints == "legs_arms":
-                        concat = tf.concat([concat[:, :, 3:9],
-                                            concat[:, :, 12:18],
-                                            concat[:, :, 21:27],
-                                            concat[:, :, 30:36],
-                                            concat[:, :, 48:]], axis=2)
-                    elif joints == "arms":
-                        concat = concat[:, :, 48:]
-                    elif joints == "legs":
-                        concat = tf.concat([concat[:, :, 3:9],
-                                            concat[:, :, 12:18],
-                                            concat[:, :, 21:27],
-                                            concat[:, :, 30:36]], axis=2)
-                    # Compute and store the mean and standard deviation
-                    mean[sampling_t][prediction_t] = tf.math.reduce_mean(
-                        concat).numpy().item()
-                    stdev[sampling_t][prediction_t] = tf.math.reduce_std(
-                        concat).numpy().item()
-            # Store mean and standard deviation in a single dict
-            data = {"mean": mean, "stdev": stdev}
-            # Save to a pickle file
-            pkl_name = f"universal/skeleton={skeleton} joints={joints}.pickle"
-            with open(pkl_name, "wb") as f:
-                pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
-            print(f"Saved mean and standard deviation to {pkl_name}")
+    # Iterate through all selected (input) skeleton structures
+    for skel_input in SKELETON.keys():
+        # Iterate through all selected (prediction) skeleton structures
+        for skel_pred in SKELETON[skel_input]:
+            # Create NumPy arrays to store mean and stdev for each combination
+            # of sampling time and horizon time
+            mean = np.zeros(SAMPLING_TIME.shape)
+            stdev = np.zeros(SAMPLING_TIME.shape)
+            # Create another array, to accumulate the number of data points
+            pts = np.zeros(SAMPLING_TIME.shape)
+            # Iterate through all specified horizon frames
+            for horizon_frames in iter(HORIZON_FRAMES):
+                # Load validation data
+                mapped_ds = parsed_ds.map(lambda x: dataset.map_dataset(
+                    x, skeleton=skel_input, horizon_frames=horizon_frames),
+                    num_parallel_calls=tf.data.AUTOTUNE, deterministic=True)
+                # Create a dataset for evaluation
+                eval_ds = mapped_ds.batch(256).prefetch(tf.data.AUTOTUNE)
+                # Predict for the whole dataset
+                print(f"Predicting with skeleton_input={skel_input}, "
+                      f"skeleton_prediction={skel_pred}, "
+                      f"and horizon_frames={horizon_frames}")
+                prediction = model.predict(eval_ds, verbose=1)
+                # Compute the number of data points for a single recording
+                rec_pts = prediction.shape[1]*prediction.shape[2]
+                # Create a dataset to be used as reference
+                # All sequences are joined in a single large batch
+                reference_ds = (mapped_ds.batch(prediction.shape[0])
+                                .prefetch(tf.data.AUTOTUNE))
+                # Extract the values as NumPy arrays
+                inputs, pose_targets = next(reference_ds.as_numpy_iterator())
+                # Compute the absolute error between targets and predictions
+                abs_err = np.abs(prediction - pose_targets)
+                # Remove axes from the recordings, according to skel_pred
+                if skel_pred == "legs_arms":
+                    abs_err = np.delete(abs_err, (0, 1, 2, 9, 10, 11, 18, 19,
+                                                  20, 27, 28, 29, 36, 37, 38,
+                                                  39, 40, 41, 42, 43, 44, 45,
+                                                  46, 47), axis=1)
+                elif skel_pred == "legs":
+                    abs_err = np.delete(abs_err, (0, 1, 2, 9, 10, 11, 18, 19,
+                                                  20, 27, 28, 29), axis=1)
+                    abs_err = np.delete(abs_err, np.s_[36:], axis=1)
+                elif skel_pred == "arms":
+                    abs_err = np.delete(abs_err, np.s_[:48], axis=1)
+                # Compute mean and standard deviation for each recording
+                rec_mean = np.mean(abs_err, axis=(1, 2))
+                rec_stdev = np.std(abs_err, axis=(1, 2))
+                # Extract sampling and horizon times from "inputs"
+                sampling_input = np.round(inputs["elapsed_input"][:, 0, 0], 4)
+                horizon_input = np.round(inputs["horizon_input"][:, 0, 0], 4)
+                for n in range(sampling_input.shape[0]):
+                    # A "horizon_input" zeroed out means an impossible shift
+                    if horizon_input[n] != 0:
+                        # Locate sampling and horizon time in the global array
+                        pos = np.where(np.logical_and(
+                            SAMPLING_TIME == sampling_input[n],
+                            HORIZON_TIME == horizon_input[n]))[0]
+                        # Check if this combination is desired
+                        if pos.size != 0:
+                            # Retrieve the index
+                            i = pos.item()
+                            # Compute new values of mean and standard deviation
+                            new_pts = pts[i] + rec_pts
+                            new_mean = (pts[i]*mean[i] +
+                                        rec_pts*rec_mean[n]) / new_pts
+                            new_stdev = np.sqrt((
+                                pts[i]*stdev[i]**2 + rec_pts*rec_stdev[n]**2 +
+                                pts[i]*rec_pts*(mean[i] - rec_mean[n])**2 /
+                                new_pts) / new_pts)
+                            # Update values
+                            mean[i] = new_mean
+                            stdev[i] = new_stdev
+                            pts[i] = new_pts
+            # Remove unused sampling rates and prediction horizons
+            sampling_time = np.delete(SAMPLING_TIME, pts == 0)
+            horizon_time = np.delete(HORIZON_TIME, pts == 0)
+            mean = np.delete(mean, pts == 0)
+            stdev = np.delete(stdev, pts == 0)
+            # Save to a NumPy npz file
+            np.savez(f"universal/skeleton_input={skel_input} "
+                     f"skeleton_prediction={skel_pred}.npz",
+                     sampling_time=sampling_time,
+                     horizon_time=horizon_time,
+                     mean=mean, stdev=stdev)
