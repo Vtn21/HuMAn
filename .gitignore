@@ -4,4 +4,6 @@ human/model/model.png
 human/model/*.npz
 human.egg-info
 training/*/
-evaluation/*/
+evaluation/*/*.npz
+evaluation/*/*.mat
+evaluation/*/*.png
