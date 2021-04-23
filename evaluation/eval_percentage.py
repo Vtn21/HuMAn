@@ -13,12 +13,35 @@ Author: Victor T. N.
 """
 
 
+import numpy as np
 import os
-import pickle
 from human.model.human import HuMAn
 from human.utils import dataset
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Hide unnecessary TF messages
 import tensorflow as tf  # noqa: E402
+
+
+# This dict configures the number of future frames for each sampling time
+SAMPLING_FRAMES = {0.0833: range(1,   7, 1),
+                   0.0667: range(1,   8, 1),
+                   0.05:   range(1,  11, 1),
+                   0.0417: range(1,  12, 2),
+                   0.04:   range(1,  13, 2),
+                   0.0333: range(1,  16, 2),
+                   0.02:   range(1,  26, 4),
+                   0.0167: range(1,  30, 4),
+                   0.016:  range(1,  32, 4),
+                   0.01:   range(1,  51, 5),
+                   0.0083: range(1,  61, 5),
+                   0.008:  range(1,  63, 5),
+                   0.004:  range(1, 126, 10)}
+# Create lists to store all possible combinations
+HORIZON_FRAMES = []
+# Fill the lists
+for key, value in SAMPLING_FRAMES.items():
+    HORIZON_FRAMES.extend(list(value))
+# Turn lists into sets, removing repeated values, then turn into NumPy arrays
+HORIZON_FRAMES = np.array(list(set(HORIZON_FRAMES)))
 
 
 if __name__ == "__main__":
@@ -33,73 +56,60 @@ if __name__ == "__main__":
     # Load weights from saved model
     saves_path = "../training/saves/train_universal"
     model.load_weights(saves_path)
-    # Create a dict to store all absolute error measurements
-    abs_err = {}
-    # Start with a single future frame, and increase until total
-    # dataset capacity is reached
-    unable_to_shift = -1
-    total_iterations = 0
-    horizon_frames = 1
-    while unable_to_shift < total_iterations:
+    # Split the maximum horizon time (0.5 seconds) into bins
+    n_bins = 3
+    bin_limits = [0, 0.5/3, 2*0.5/3, 0.5]
+    # Create lists to store the absolute error values into bins
+    err_bins = [[] for _ in range(n_bins)]
+    # Iterate through all specified horizon frames
+    for horizon_frames in HORIZON_FRAMES:
         # Load validation data
-        eval_ds = (parsed_ds
-                   .map(lambda x: dataset.map_dataset(
-                        x, skeleton="full_body",
-                        horizon_frames=horizon_frames))
-                   .batch(1).prefetch(tf.data.AUTOTUNE))
-        # Create an iterator
-        test_iter = iter(eval_ds)
-        # Iterate through the whole dataset
-        unable_to_shift = 0
-        total_iterations = 0
-        for inputs, pose_target in test_iter:
-            if inputs["horizon_input"].numpy().all() == 0:
-                # If the dataset is unable to shift the required number of
-                # frames, it returns the "horizon_input" array filled with
-                # zeros
-                unable_to_shift += 1
-            else:
-                # Successfully shifted the required number of frames
-                # Extract prediction time
-                prediction_t = inputs["horizon_input"].numpy().item(0)
-                # Generate a prediction
-                prediction = model(inputs)
-                # Check if this sampling time has already been used
-                if prediction_t not in abs_err.keys():
-                    # Create this entry
-                    abs_err[prediction_t] = tf.math.abs(
-                        prediction - pose_target)
-                else:
-                    # Append to the list
-                    abs_err[prediction_t].append(
-                        tf.math.abs(prediction - pose_target))
-            # Increment the iterations counter
-            total_iterations += 1
-        # Next iteration will use one more frame as prediction horizon
-        horizon_frames += 1
-    # Compute percent means and standard deviations
-    mean = {}
-    for prediction_t in abs_err.keys():
-        mean[prediction_t] = {}
-        # Concatenate all absolute error matrices
-        concat = tf.concat(abs_err[prediction_t], axis=0)
-        # Flatten this tensor
-        flat = tf.reshape(concat, [-1])
-        # Sort in ascending order
-        asc = tf.sort(flat)
-        # Compute and store the mean and standard deviation
-        mean[prediction_t]["avg"] = tf.math.reduce_mean(
-            asc).numpy().item()
-        mean[prediction_t]["top95"] = tf.math.reduce_mean(
-            tf.slice(asc, [0], [int(tf.shape(asc).numpy().item()*0.95)]))
-        mean[prediction_t]["top90"] = tf.math.reduce_mean(
-            tf.slice(asc, [0], [int(tf.shape(asc).numpy().item()*0.9)]))
-        mean[prediction_t]["worst10"] = tf.math.reduce_mean(
-            tf.slice(asc, [int(tf.shape(asc).numpy().item()*0.1)], [-1]))
-        mean[prediction_t]["worst5"] = tf.math.reduce_mean(
-            tf.slice(asc, [int(tf.shape(asc).numpy().item()*0.05)], [-1]))
-    # Save to a pickle file
-    pkl_name = "percentage/skeleton=full_body joints=full_body.pickle"
-    with open(pkl_name, "wb") as f:
-        pickle.dump(mean, f, pickle.HIGHEST_PROTOCOL)
-    print(f"Saved percentage means to {pkl_name}")
+        mapped_ds = parsed_ds.map(lambda x: dataset.map_dataset(
+            x, skeleton="full_body", horizon_frames=horizon_frames),
+            num_parallel_calls=tf.data.AUTOTUNE, deterministic=True)
+        # Create a dataset for evaluation
+        eval_ds = mapped_ds.batch(256).prefetch(tf.data.AUTOTUNE)
+        # Predict for the whole dataset
+        print(f"Predicting with horizon_frames={horizon_frames}")
+        prediction = model.predict(eval_ds, verbose=1)
+        # Create a dataset to be used as reference
+        # All sequences are joined in a single large batch
+        reference_ds = (mapped_ds.batch(prediction.shape[0])
+                        .prefetch(tf.data.AUTOTUNE))
+        # Extract the values as NumPy arrays
+        inputs, pose_targets = next(reference_ds.as_numpy_iterator())
+        # Compute the absolute error between targets and predictions
+        abs_err = np.abs(prediction - pose_targets)
+        # Extract horizon times from "inputs"
+        horizon_input = np.round(inputs["horizon_input"][:, 0, 0], 4)
+        for i in range(horizon_input.shape[0]):
+            # A "horizon_input" zeroed out means an impossible shift
+            if horizon_input[i] != 0:
+                # Locate horizon time in the specified bins
+                for n in range(n_bins):
+                    if bin_limits[n] <= horizon_input[i] <= bin_limits[n + 1]:
+                        # Add error array to corresponding bin
+                        err_bins[n].append(abs_err[i])
+    # Turn lists into 1D arrays
+    for n in range(n_bins):
+        err_bins[n] = np.concatenate(err_bins[n], axis=None)
+    # Compute metrics for each bin
+    average = np.empty(n_bins)
+    top90 = np.empty(n_bins)
+    top95 = np.empty(n_bins)
+    worst10 = np.empty(n_bins)
+    worst5 = np.empty(n_bins)
+    for n in range(n_bins):
+        average[n] = np.mean(err_bins[n])
+        kth90 = int(len(err_bins[n])*0.9)
+        part90 = np.partition(err_bins[n], kth90)
+        top90[n] = np.mean(part90[:kth90])
+        worst10[n] = np.mean(part90[kth90:])
+        kth95 = int(len(err_bins[n])*0.95)
+        part95 = np.partition(err_bins[n], kth95)
+        top95[n] = np.mean(part95[:kth95])
+        worst5[n] = np.mean(part95[kth95:])
+    # Save results
+    np.savez("percentage/percentages.npz",
+             bin_limits=bin_limits, average=average,
+             top90=top90, top95=top95, worst10=worst10, worst5=worst5)
