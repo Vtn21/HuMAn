@@ -1,5 +1,10 @@
 """eval_joints.py
 
+Evaluates the universal model with the validation dataset, averaging absolute
+errors over each joint (set of three angles).
+
+Results are stored in npz files inside the "joints" subfolder.
+
 Author: Victor T. N.
 """
 

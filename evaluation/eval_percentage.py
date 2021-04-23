@@ -1,15 +1,13 @@
 """eval_test.py
 
 Evaluates the universal model, with fixed skeleton structure (full body),
-variable sampling rate and prediction horizon. Computes, for "bins" of
-prediction horizon, the following error groups:
-- Top 90 %
-- Top 95 %
+variable sampling rate and prediction horizon. Computes, for each individual
+prediction horizon, the following sets of mean absolute error:
 - Average
+- Top 95 %
+- Top 90 %
 - Worst 10 %
 - Worst 5 %
-
-Results are stored in npz files inside the "percentage" subfolder.
 
 Author: Victor T. N.
 """

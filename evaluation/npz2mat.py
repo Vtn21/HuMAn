@@ -1,8 +1,5 @@
 """npz2mat.py
 
-Converts npz files contained in subfolders of "evaluation" to MAT files.
-This enables easy usage of MATLAB to create plots.
-
 Author: Victor T. N.
 """
 

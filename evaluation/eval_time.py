@@ -1,10 +1,5 @@
 """eval_time.py
 
-Evaluates the universal model using the 1024 frames validation dataset, to
-check how error evolves over time.
-
-Results are stored in npz files inside the "time" subfolder.
-
 Author: Victor T. N.
 """
 

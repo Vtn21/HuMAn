@@ -1,9 +1,6 @@
 """eval_universal.py
 
-Evaluates the universal model in the validation dataset, with varying body
-structures, sampling rates, and prediction horizons.
 
-Results are stored in npz files inside the "universal" subfolder.
 
 Author: Victor T. N.
 """
