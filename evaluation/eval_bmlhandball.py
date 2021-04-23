@@ -1,5 +1,10 @@
 """eval_bmlhandball.py
 
+Evaluate three models (universal, train_bmlhandball and transfer_bmlhandball)
+on universal and BMLhandball validation datasets.
+
+Results are stored in npz files inside the "bmlhandball" subfolder.
+
 Author: Victor T. N.
 """
 

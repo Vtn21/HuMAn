@@ -1,5 +1,8 @@
 """view_bml_mpi.py
 
+Simple script to print the results obtained when evaluating the model on the
+BMLhandball and MPI-HDM05 datasets.
+
 Author: Victor T. N.
 """
 

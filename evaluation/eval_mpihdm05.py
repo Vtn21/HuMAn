@@ -1,5 +1,10 @@
 """eval_mpihdm05.py
 
+Evaluate three models (universal, train_mpihdm05 and transfer_mpihdm05)
+on universal and MPI-HDM05 validation datasets.
+
+Results are stored in npz files inside the "mpihdm05" subfolder.
+
 Author: Victor T. N.
 """
 
