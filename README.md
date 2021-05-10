@@ -27,6 +27,7 @@
 - [About](#about)
 - [Getting Started](#getting_started)
 - [Usage](#usage)
+- [Contributing](#contributing)
 - [Author](#author)
 - [Acknowledgments](#acknowledgement)
 
@@ -48,35 +49,33 @@ This algorithm is programmed using [Python](https://www.python.org/), currently 
 Other key dependencies are (version numbers are kept for reference, but newer versions may work):
 
 - [TensorFlow](https://www.tensorflow.org/) (version 2.4)
-```bash
-pip install tensorflow
-```
+    - ```bash
+      pip install tensorflow
+      ```
 
 - [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-zone) (version 11.0)
   - This is not mandatory, but highly recommended! An available NVIDIA GPU can speed up TensorFlow code to a great extent, when compared to running solely on CPU;
-  - You can install it with Conda, enabling different versions of the toolkit to be installed in other virtual environments;
+  - You can install it with Conda, enabling different versions of the toolkit to be installed in other virtual environments, or use the official installer from the [NVIDIA website](https://developer.nvidia.com/cuda-zone);
   - Ensure to pair TensorFlow and CUDA versions correctly (see [this](https://www.tensorflow.org/install/gpu#software_requirements)).
-```bash
-conda install cudatoolkit
-```
+  - ```bash
+    conda install cudatoolkit
+    ```
 
 - [STAR model](https://github.com/Vtn21/STAR) (more about it below)
-  - The authors of the STAR body model provide loaders based upon Chumpy, PyTorch and TensorFlow. I created a fork of their repository, to make pointing to the model (.npz files) directory easier and more flexible. You can install it using pip:
-
-```bash
-pip install git+https://github.com/Vtn21/STAR
-```
+  - The authors of the STAR body model provide loaders based upon Chumpy, PyTorch and TensorFlow. I created a fork of their repository, to make pointing to the model (.npz files) directory easier and more flexible. You can install it using pip.
+  - ```bash
+    pip install git+https://github.com/Vtn21/STAR
+    ```
 
 - [Trimesh](https://trimsh.org/) (version 3.9.1)
-  - Used for visualizing AMASS recordings as body meshes.
-
-```bash
-conda install -c conda-forge trimesh
-```
+  - Used solely for visualizing AMASS recordings as body meshes, being thus not mandatory.
+  - ```bash
+    conda install -c conda-forge trimesh
+    ```
 
 ### 🗂 Database and model
 
-HuMAn uses the [AMASS](https://amass.is.tue.mpg.de/) human motion database. Its data is publicly available, requiring only a simple account. The whole database (after uncompressed) has around 23 GB of [NumPy](https://numpy.org/) npz files. Keep it in a directory of your choice.
+HuMAn uses the [AMASS](https://amass.is.tue.mpg.de/) human motion database. Its data is publicly available, requiring only a simple account. The whole database (after uncompressed) has around 23 GB of [NumPy](https://numpy.org/) *npz* files, corresponding to more than 45 hours of recordings. Keep it in a directory of your choice.
 
 AMASS data can be visualized using a series of body models, such as [SMPL](https://smpl.is.tue.mpg.de/), [SMPL-H](https://mano.is.tue.mpg.de/) (this comprises hand motions), [SMPL-X](https://smpl-x.is.tue.mpg.de/) (SMPL eXpressive, with facial expressions), or the more recent [STAR](https://star.is.tue.mpg.de/en). HuMAn uses the STAR model as it has fewer parameters than its predecessors, while exhibiting more realistic shape deformations. You can download the models from their webpages, creating an account as done for AMASS.
 
@@ -108,10 +107,12 @@ Update the folder paths in the scripts as required. The example folder structure
 
 ### 💻 Installing
 
-This (still) is as simple as cloning this repository.
+This repository is compatible with pip. Thus, the easiest way to use it is by cloning it to a directory of your choice, then installing it as a pip package, enabling importing it inside your scripts.
 
 ```bash
 git clone https://github.com/Vtn21/HuMAn
+cd HuMAn
+pip install -e .
 ```
 
 <!-- End with an example of getting some data out of the system or using it for a little demo. -->
@@ -135,7 +136,19 @@ Give an example
 
 ## 🎈 Usage <a name="usage"></a>
 
-More to come...
+After downloading and uncompressing the AMASS dataset, start by using the preprocessing script inside the [scripts](https://github.com/Vtn21/HuMAn/tree/main/scripts) folder. Tweak it as necessary to create the TFRecords files, that will provide the algorithm with training and validation data.
+
+After that, use the [training script](https://github.com/Vtn21/HuMAn/blob/main/training/train.py) to train your model. It automatically saves training results. Call it with command-line args, "d" for "dataset" and "p" for "procedure". The "train" procedure trains the model from scratch, while "transfer" loads the previously trained universal model and fine-tunes it according to the selected dataset.
+
+```bash
+python train.py -d=universal -p=train
+python train.py -d=bmlhandball -p=train
+python train.py -d=bmlhandball -p=transfer
+python train.py -d=mpihdm05 -p=train
+python train.py -d=mpihdm05 -p=transfer
+```
+
+The [evaluation](https://github.com/Vtn21/HuMAn/tree/main/evaluation) folder contains several scripts for evaluating the trained the model from a series of different metrics. It also contains the *npz2mat* script, to convert *npz* to *mat* files and plot results using MATLAB. This is just personal preference, it is completely possible to use [Matplotlib](https://matplotlib.org/) or other library for that purpose.
 
 <!-- ## 🚀 Deployment <a name = "deployment"></a>
 Add additional notes about how to deploy this on a live system. -->
@@ -145,6 +158,26 @@ Add additional notes about how to deploy this on a live system. -->
 - [Express](https://expressjs.com/) - Server Framework
 - [VueJs](https://vuejs.org/) - Web Framework
 - [NodeJs](https://nodejs.org/en/) - Server Environment -->
+
+## 🤝 Contributing <a name="contributing"></a>
+
+- Fork the repo
+  - <https://github.com/Vtn21/HuMAn/fork>
+- Check out a new branch based and name it to what you intend to do:
+  - ````bash
+    git checkout -b BRANCH_NAME
+    ````
+- Commit your changes
+  - Please provide a git message that explains what you've done;
+  - Commit to the forked repository.
+    ````bash
+    git commit -m "A short and relevant message"
+    ````
+- Push to the branch
+  - ````bash
+    git push origin BRANCH_NAME
+    ````
+- Make a pull request!
 
 ## ✍️ Author <a name = "author"></a>
 
