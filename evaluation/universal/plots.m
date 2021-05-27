@@ -81,16 +81,17 @@ for item = skeleton
         Y = Y(keep, :);
         MEAN = MEAN(keep, :);
         % Plot
-        surf(X, Y, MEAN, "EdgeColor", "none", "FaceColor", input(3), "DisplayName", input(2));
+        surf(X, Y, MEAN, "EdgeColor", "none", "FaceColor", input(3), "DisplayName", input(2), "FaceAlpha", 0.9, "FaceLighting", "gouraud");
+        light("Position", [0 -1 0]);
         xlabel("Sampling time [s]");
         ylabel("Prediction horizon [s]");
         zlabel("Mean absolute error [rad]");
     end
-    view(90, 0);
+    view(68, 5);
     legend("Location", "northwest");
     grid;
     % Window size
-    f.Position(3:4) = [400 300];
+    f.Position(3:4) = [600 350];
 end
 
 
