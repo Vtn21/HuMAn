@@ -18,11 +18,13 @@ x = categorical(joints_s);
 x = reordercats(x, joints_s);
 
 figure;
-b = barh(x, mean_s, "FaceColor", "flat");
+barh(x, mean_s, "FaceColor", "flat");
 hold on;
 yticklabels(joints_s);
-xl = xline(mean(mean_s), "--r", "LineWidth", 2);
-er = errorbar(mean_s, x, 0*stdev_s, stdev_s, "horizontal", "Color", [0 0 0], "LineStyle", "none", "LineWidth", 1);
+xline(mean(mean_s), "--r", "LineWidth", 2);
+errorbar(mean_s, x, 0*stdev_s, stdev_s, "horizontal", "Color", [0 0 0], ...
+         "LineStyle", "none", "LineWidth", 1);
 grid;
 xlabel("Absolute error [rad]");
-legend("Mean absolute error", "Average MAE", "Standard deviation", "Location", "southeast");
+legend("Mean absolute error", "Average MAE", "Standard deviation", ...
+       "Location", "southeast");
