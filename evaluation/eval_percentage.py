@@ -95,21 +95,42 @@ if __name__ == "__main__":
         err_bins[n] = np.concatenate(err_bins[n], axis=None)
     # Compute metrics for each bin
     average = np.empty(n_bins)
+    average_std = np.empty(n_bins)
     top90 = np.empty(n_bins)
+    top90_std = np.empty(n_bins)
     top95 = np.empty(n_bins)
+    top95_std = np.empty(n_bins)
     worst10 = np.empty(n_bins)
+    worst10_std = np.empty(n_bins)
     worst5 = np.empty(n_bins)
+    worst5_std = np.empty(n_bins)
     for n in range(n_bins):
+        # Average
         average[n] = np.mean(err_bins[n])
+        average_std[n] = np.std(err_bins[n])
+        # 90 % partition
         kth90 = int(len(err_bins[n])*0.9)
         part90 = np.partition(err_bins[n], kth90)
+        # Top 90 %
         top90[n] = np.mean(part90[:kth90])
+        top90_std[n] = np.std(part90[:kth90])
+        # Worst 10 %
         worst10[n] = np.mean(part90[kth90:])
+        worst10_std[n] = np.std(part90[kth90:])
+        # 95 % partition
         kth95 = int(len(err_bins[n])*0.95)
         part95 = np.partition(err_bins[n], kth95)
+        # Top 95 %
         top95[n] = np.mean(part95[:kth95])
+        top95_std[n] = np.std(part95[:kth95])
+        # Worst 5 %
         worst5[n] = np.mean(part95[kth95:])
+        worst5_std[n] = np.std(part95[kth95:])
     # Save results
     np.savez("percentage/percentages.npz",
-             bin_limits=bin_limits, average=average,
-             top90=top90, top95=top95, worst10=worst10, worst5=worst5)
+             bin_limits=bin_limits,
+             average=average, average_std=average_std,
+             top90=top90, top90_std=top90_std,
+             top95=top95, top95_std=top95_std,
+             worst10=worst10, worst10_std=worst10_std,
+             worst5=worst5, worst5_std=worst5_std)
