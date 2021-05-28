@@ -52,6 +52,13 @@ def view_recording(path_star="star",
         resolution (tuple): Resolution of the viewer window.
                             Defaults to (800, 600).
     """
+    # Check "gender" string to avoid problems with bytes-like representations
+    if "female" in gender:
+        gender = "female"
+    elif "male" in gender:
+        gender = "male"
+    else:
+        gender = "neutral"
     # Path to the STAR model
     path_model = os.path.join(path_star, str(gender) + ".npz")
     # Create STAR model
@@ -183,7 +190,7 @@ def view_amass_npz(path_npz="recording.npz", path_star="star"):
                        trans=tf.constant(body_data["trans"][:],
                                          dtype=tf.float32),
                        dt=float(1/body_data["mocap_framerate"]),
-                       gender=body_data["gender"])
+                       gender=str(body_data["gender"]))
 
 
 def view_tfrecord(path_tfrecord="dataset.tfrecord", path_star="star"):
