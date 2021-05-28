@@ -211,7 +211,7 @@ def view_tfrecord(path_tfrecord="dataset.tfrecord", path_star="star"):
     # Take a record as example
     record = next(iter(dataset))
     # Parse and decode
-    poses, betas, dt, gender = decode_record(parse_record(record))
+    poses, seq_length, betas, dt, gender = decode_record(parse_record(record))
     # View
     view_recording(path_star=path_star,
                    poses=poses, betas=betas,
