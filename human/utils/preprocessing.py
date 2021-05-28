@@ -84,10 +84,10 @@ def amass_to_tfrecord(input_npz_list, output_tfrecord, framerate_drop=[1],
                 # File can be used
                 else:
                     # Turn gender string into integer
-                    if str(body_data["gender"]) == "male":
-                        gender_int = -1
-                    elif str(body_data["gender"]) == "female":
+                    if "female" in str(body_data["gender"]):
                         gender_int = 1
+                    elif "male" in str(body_data["gender"]):
+                        gender_int = -1
                     else:
                         gender_int = 0
                     # Ensure that the requested number of betas is not greater
@@ -148,3 +148,71 @@ def amass_to_tfrecord(input_npz_list, output_tfrecord, framerate_drop=[1],
                                 writer.write(tf_example.SerializeToString())
                                 # Increment "start" to get a new window
                                 start += window_stride
+
+
+def amass_to_tfrecord_simple(input_npz, output_tfrecord,
+                             max_horizon=0.5, max_betas=10):
+    """Preprocesses and saves a single AMASS recording (a .npz file)
+    into a TFRecord file.
+
+    Args:
+        input_npz (string): .npz file (path strings) to be included in the
+            output TFRecord file.
+        output_tfrecord (string): full path to the output TFRecord file, that
+            will contain the selected recording. It is recommended to use the
+            .tfrecord extension to help identify the file type.
+        max_horizon (float, optional): maximum prediction horizon, in seconds.
+            Defaults to 0.5 (twice the time of human reaction to tactile
+            stimuli).
+        max_betas (int, optional): maximum number of shape components to be
+            recorded. Defaults to 10.
+    """
+    # Create a TFRecord writer
+    with tf.io.TFRecordWriter(output_tfrecord) as writer:
+        # Try to load the .npz file
+        try:
+            body_data = np.load(input_npz)
+        except IOError:
+            print(f"Error loading {input_npz}")
+        except ValueError:
+            print(f"allow_pickle=True required to load {input_npz}")
+        else:
+            # Warn against files with invalid data
+            if not np.any(np.isfinite(body_data["poses"])):
+                print(f"{input_npz} contains invalid pose data")
+            # File can be used
+            else:
+                # Turn gender string into integer
+                if "female" in str(body_data["gender"]):
+                    gender_int = 1
+                elif "male" in str(body_data["gender"]):
+                    gender_int = -1
+                else:
+                    gender_int = 0
+                # Ensure that the requested number of betas is not greater
+                # than what is available
+                num_betas = min(max_betas, body_data["betas"].shape[0])
+                # Convert framerate into sampling time
+                dt = 1/body_data["mocap_framerate"]
+                # Build the feature dict
+                feature = {
+                    # Gender encoded into integer
+                    "gender": features._int64_feature([gender_int]),
+                    # Shape components (betas)
+                    "betas": features._float_feature(
+                        body_data["betas"][:num_betas]),
+                    # The sequence length
+                    "seq_length": features._int64_feature(
+                        [int(body_data["poses"].shape[0] - max_horizon/dt)]),
+                    # Framerate converted into sampling time
+                    "dt": features._float_feature([dt]),
+                    # The poses array
+                    "poses": features._float_feature(
+                        body_data["poses"][:, :72].flatten())
+                }
+                # Create the example
+                tf_example = tf.train.Example(
+                    features=tf.train.Features(
+                        feature=feature))
+                # Write to TFRecord file
+                writer.write(tf_example.SerializeToString())
